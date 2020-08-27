@@ -6,6 +6,7 @@ BinJ Editor let's you import, edit, save, share and export translations for game
 
 ## Using BinJ Editor
 You can download the newest version as an executable from the [Release Page](https://github.com/Ich73/BinJEditor/releases/latest). Extract the archive and run `BinJEditor.exe`.  
+  
 To import a file choose `File > Import...` and select the file. This process may take a few seconds. Now you can start editing the file by entering text into the last column. When you finished editing you can save a project file by choosing `File > Save As...` or export an edited `.binJ` file by choosing `File > Export...`.
   
 More information can be found in the [Wiki](https://github.com/Ich73/BinJEditor/wiki).
