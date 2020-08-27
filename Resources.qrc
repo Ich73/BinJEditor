@@ -1,0 +1,14 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource prefix="Resources/Images">
+		<file alias="icon.ico">Resources/Images/icon.ico</file>
+	</qresource>
+	<qresource prefix="Resources/Forms">
+		<file alias="window.ui">Resources/Forms/window.ui</file>
+		<file alias="ftpclient.ui">Resources/Forms/ftpclient.ui</file>
+	</qresource>
+	<qresource prefix="Resources/i18n">
+		<file alias="de.qm">Resources/i18n/de.qm</file>
+		<file alias="en.qm">Resources/i18n/en.qm</file>
+	</qresource>
+</RCC>

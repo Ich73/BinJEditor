@@ -1,0 +1,13 @@
+*
+!*/
+!Resources/Forms/*.ui
+!Resources/i18n/*.ts
+!Resources/Images/*.ico
+!Table/*.txt
+!/.gitignore
+!/LICENSE
+!/README
+!/BinJEditor.pyw
+!/BinJEditor.spec
+!/JTools.py
+!/Resources.qrc
