@@ -1,5 +1,5 @@
 # BinJ Editor
-BinJ Editor let's you import, edit, save, share and export translations for games using the `.binJ` format to store messages. Those games include _Dragon Quest Monsters: Terry's Wonderland 3D_ and _Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key_.
+BinJ Editor lets you import, edit, save, share and export translations for games using the `.binJ` format to store messages. Those games include _Dragon Quest Monsters: Terry's Wonderland 3D_ and _Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key_.
 
 ![Screenshot](https://user-images.githubusercontent.com/44297391/91449697-b562e480-e87b-11ea-983f-1c6407ecef3a.png)
 
