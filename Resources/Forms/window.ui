@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1200</width>
-    <height>800</height>
+    <width>1080</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -134,7 +134,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1200</width>
+     <width>1080</width>
      <height>21</height>
     </rect>
    </property>
@@ -158,6 +158,7 @@
      <string>Help</string>
     </property>
     <addaction name="actionAbout"/>
+    <addaction name="actionCheckForUpdates"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -344,6 +345,11 @@
    </property>
    <property name="text">
     <string>German</string>
+   </property>
+  </action>
+  <action name="actionCheckForUpdates">
+   <property name="text">
+    <string>Check for Updates...</string>
    </property>
   </action>
  </widget>

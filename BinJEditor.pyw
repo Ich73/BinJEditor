@@ -14,18 +14,21 @@ from JTools import *
 import Resources
 import pyperclip as clipboard
 import json
+import re
 import sys
 import os
 from os import path
 from zipfile import ZipFile
 from tempfile import gettempdir as tempdir
 from ftplib import FTP
+import webbrowser
+from urllib.request import urlopen
 
 TABLE_PATH = 'Table/'
 CONFIG_FILE = 'config.json'
 
 VERSION = 'v1.0.0'
-REPOSITORY = ('GitHub', r'https://github.com/Ich73/BinJEditor')
+REPOSITORY = r'Ich73/BinJEditor'
 AUTHOR = 'Dominik Beese 2020'
 
 
@@ -191,6 +194,7 @@ class Window(QMainWindow):
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
 		
 		self.actionAbout.triggered.connect(self.showAbout)
+		self.actionCheckForUpdates.triggered.connect(lambda: self.checkUpdates(True))
 		
 		# decoding table
 		self.menuDecodingTableGroup = QActionGroup(self.menuDecodingTable)
@@ -225,6 +229,7 @@ class Window(QMainWindow):
 		self.retranslateUi(None)
 		self.setWindowIcon(QIcon(ICON))
 		self.show()
+		self.checkUpdates()
 	
 	def retranslateUi(self, language):
 		# change locale
@@ -257,6 +262,7 @@ class Window(QMainWindow):
 		self.actionOpen.setText(self.tr("Open..."))
 		self.actionOpen.setShortcut(self.tr("Ctrl+O"))
 		self.actionAbout.setText(self.tr("About BinJ Editor..."))
+		self.actionCheckForUpdates.setText(self.tr("Check for Updates..."))
 		self.actionImport.setText(self.tr("Import..."))
 		self.actionImport.setShortcut(self.tr("Ctrl+I"))
 		self.actionExport.setText(self.tr("Export..."))
@@ -316,6 +322,59 @@ class Window(QMainWindow):
 				event.ignore()
 		# close
 		pass
+	
+	## UPDATES ##
+	
+	def checkUpdates(self, showFailure = False):
+		""" Queries the github api for a new release. """
+		try:
+			# query api
+			latest = r'https://api.github.com/repos/%s/releases/latest' % REPOSITORY
+			with urlopen(latest) as url:
+				data = json.loads(url.read().decode())
+			tag = data['tag_name']
+			info = data['body']
+			link = data['html_url']
+			
+			# compare versions
+			def ver2int(s):
+				if s[0] == 'v': s = s[1:]
+				v = s.split('.')
+				return sum([int(k) * 100**(len(v)-i) for i, k in enumerate(v)])
+			current_version = ver2int(VERSION)
+			tag_version = ver2int(tag)
+			
+			if current_version == tag_version:
+				if showFailure: self.showInfo(self.tr('update.newestVersion') % self.tr('appname'))
+				return
+			
+			if current_version > tag_version:
+				if showFailure: self.showInfo(self.tr('update.newerVersion') % self.tr('appname'))
+				return
+			
+			# show message
+			msg = QMessageBox()
+			msg.setWindowTitle(self.tr('Check for Updates...'))
+			msg.setWindowIcon(QIcon(ICON))
+			text = '<html><body><p>%s</p><p>%s: <code>%s</code><br/>%s: <code>%s</code></p><p>%s</p></body></html>'
+			msg.setText(text % (self.tr('update.newVersionAvailable') % self.tr('appname'), self.tr('update.currentVersion'), VERSION, self.tr('update.newVersion'), tag, self.tr('update.doWhat')))
+			info = re.sub(r'\[([^\]]*)\]\([^)]*\)', '\\1', info) # remove links
+			info = re.sub(r'`([^`]*)`', '\\1', info) # remove inline code
+			info = re.sub(r'__([^_]*)__|_([^_]*)_|\*\*([^\*]*)\*\*|\*([^\*]*)\*', '\\1\\2\\3\\4', info) # remove bold and italic
+			msg.setDetailedText(info)
+			button_open_website = QPushButton(self.tr('update.openWebsite'))
+			msg.addButton(button_open_website, QMessageBox.AcceptRole)
+			msg.addButton(QMessageBox.Cancel)
+			msg.exec_()
+			res = msg.clickedButton()
+			
+			# open website
+			if msg.clickedButton() == button_open_website:
+				webbrowser.open(link)
+			
+		except Exception as e:
+			print('Warning: Checking for updates failed:', str(e))
+			if showFailure: self.showError(self.tr('update.failed'), str(e))
 	
 	## FILES ##
 	
@@ -587,8 +646,8 @@ class Window(QMainWindow):
 		msg.setIconPixmap(ICON.scaledToWidth(48))
 		msg.setWindowTitle(self.tr('about.title'))
 		msg.setWindowIcon(QIcon(ICON))
-		text = '<html><body style="text-align: center;"><p>%s %s @ <a href="%s">%s</a></p><p>&#xa9; %s</p></body></html>'
-		msg.setText(text % (self.tr('appname'), VERSION, *REPOSITORY[::-1], AUTHOR))
+		text = '<html><body style="text-align: center;"><p>%s %s @ <a href="%s">%s</a></p><p>%s</p></body></html>'
+		msg.setText(text % (self.tr('appname'), VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR))
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
@@ -617,27 +676,29 @@ class Window(QMainWindow):
 			return
 		Config.set('SEP', new_sep.upper())
 	
-	def showError(self, text):
+	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
 		msg = QMessageBox()
 		msg.setIcon(QMessageBox.Critical)
 		msg.setWindowTitle(self.tr('error'))
 		msg.setWindowIcon(QIcon(ICON))
 		msg.setText(text)
+		if detailedText: msg.setDetailedText(detailedText)
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
-	def showWarning(self, text):
+	def showWarning(self, text, detailedText = None):
 		""" Displays a warning message. """
 		msg = QMessageBox()
 		msg.setIcon(QMessageBox.Warning)
 		msg.setWindowTitle(self.tr('warning'))
 		msg.setWindowIcon(QIcon(ICON))
 		msg.setText(text)
+		if detailedText: msg.setDetailedText(detailedText)
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
-	def askWarning(self, text):
+	def askWarning(self, text, detailedText = None):
 		""" Displays a warning message and asks yes or no.
 			Returns True if yes was selected.
 		"""
@@ -646,8 +707,20 @@ class Window(QMainWindow):
 		msg.setWindowTitle(self.tr('warning'))
 		msg.setWindowIcon(QIcon(ICON))
 		msg.setText(text)
+		if detailedText: msg.setDetailedText(detailedText)
 		msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 		return msg.exec_() == QMessageBox.Yes
+	
+	def showInfo(self, text, detailedText = None):
+		""" Displays a warning message. """
+		msg = QMessageBox()
+		msg.setIcon(QMessageBox.Information)
+		msg.setWindowTitle(self.tr('information'))
+		msg.setWindowIcon(QIcon(ICON))
+		msg.setText(text)
+		if detailedText: msg.setDetailedText(detailedText)
+		msg.setStandardButtons(QMessageBox.Ok)
+		msg.exec_()
 	
 	## PROPERTIES ##
 	
