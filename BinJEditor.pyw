@@ -229,6 +229,7 @@ class Window(QMainWindow):
 		self.retranslateUi(None)
 		self.setWindowIcon(QIcon(ICON))
 		self.show()
+		self.resizeTable()
 		self.checkUpdates()
 	
 	def retranslateUi(self, language):
@@ -359,8 +360,7 @@ class Window(QMainWindow):
 			text = '<html><body><p>%s</p><p>%s: <code>%s</code><br/>%s: <code>%s</code></p><p>%s</p></body></html>'
 			msg.setText(text % (self.tr('update.newVersionAvailable') % self.tr('appname'), self.tr('update.currentVersion'), VERSION, self.tr('update.newVersion'), tag, self.tr('update.doWhat')))
 			info = re.sub(r'\[([^\]]*)\]\([^)]*\)', '\\1', info) # remove links
-			info = re.sub(r'`([^`]*)`', '\\1', info) # remove inline code
-			info = re.sub(r'__([^_]*)__|_([^_]*)_|\*\*([^\*]*)\*\*|\*([^\*]*)\*', '\\1\\2\\3\\4', info) # remove bold and italic
+			info = re.sub(r'__([^_\r\n]*)__|_([^_\r\n]*)_|\*\*([^\*\r\n]*)\*\*|\*([^\*\r\n]*)\*|`([^`\r\n]*)`', '\\1\\2\\3\\4\\5', info) # remove bold, italic and inline code
 			msg.setDetailedText(info)
 			button_open_website = QPushButton(self.tr('update.openWebsite'))
 			msg.addButton(button_open_website, QMessageBox.AcceptRole)
