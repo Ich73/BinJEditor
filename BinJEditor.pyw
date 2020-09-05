@@ -423,7 +423,7 @@ class Window(QMainWindow):
 		""" Saves a .savJ file. """
 		# ask filename
 		dir = Config.get('savj-dir', None)
-		if path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
 		else: dir = path.splitext(self.current_filename)[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, self.tr('type.savj'))
 		if not filename: return False
@@ -533,7 +533,7 @@ class Window(QMainWindow):
 	def exportBinJ(self):
 		""" Exports a .binJ file. """
 		dir = Config.get('binj-export-dir', None)
-		if path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
 		else: dir = path.splitext(self.current_filename)[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.binj'))
 		if not filename: return False
@@ -626,7 +626,7 @@ class Window(QMainWindow):
 	def exportPatch(self):
 		""" Exports a patch file as a .patJ file. """
 		dir = Config.get('patj-export-dir', None)
-		if path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
 		else: dir = path.splitext(self.current_filename)[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.patj'))
 		if not filename: return False

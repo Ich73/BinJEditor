@@ -96,27 +96,27 @@
 <context>
     <name>Window</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="253"/>
+        <location filename="../../BinJEditor.pyw" line="254"/>
         <source>id</source>
         <translation>ID</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="253"/>
+        <location filename="../../BinJEditor.pyw" line="254"/>
         <source>orig.bytes</source>
         <translation>Original Bytes</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="253"/>
+        <location filename="../../BinJEditor.pyw" line="254"/>
         <source>orig.text</source>
         <translation>Original Text</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="253"/>
+        <location filename="../../BinJEditor.pyw" line="254"/>
         <source>edit.bytes</source>
         <translation>Edited Bytes</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="253"/>
+        <location filename="../../BinJEditor.pyw" line="254"/>
         <source>edit.text</source>
         <translation>Edited Text</translation>
     </message>
@@ -126,7 +126,7 @@
         <translation>Warning</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="310"/>
+        <location filename="../../BinJEditor.pyw" line="311"/>
         <source>warning.saveBeforeClosing</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Unsaved changes will be lost.&lt;/p&gt;&lt;p&gt;Continue?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -411,32 +411,32 @@
         <translation>Check for Updates...</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="348"/>
+        <location filename="../../BinJEditor.pyw" line="349"/>
         <source>update.newestVersion</source>
         <translation>You already have the newest version of %s.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="352"/>
+        <location filename="../../BinJEditor.pyw" line="353"/>
         <source>update.newerVersion</source>
         <translation>You have a newer version of %s than found.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="360"/>
+        <location filename="../../BinJEditor.pyw" line="361"/>
         <source>update.newVersionAvailable</source>
         <translation>A new version of %s is available.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="360"/>
+        <location filename="../../BinJEditor.pyw" line="361"/>
         <source>update.currentVersion</source>
         <translation>Current Version</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="360"/>
+        <location filename="../../BinJEditor.pyw" line="361"/>
         <source>update.newVersion</source>
         <translation>New Version</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="360"/>
+        <location filename="../../BinJEditor.pyw" line="361"/>
         <source>update.doWhat</source>
         <translation>What do you wish to do?</translation>
     </message>
