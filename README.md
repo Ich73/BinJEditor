@@ -11,6 +11,8 @@ To import a file choose `File > Import...` and select the file. This process may
   
 More information can be found in the [Wiki](https://github.com/Ich73/BinJEditor/wiki).
 
+If you cannot start BinJ Editor on Windows 7, have a look at [this answer](https://github.com/pyinstaller/pyinstaller/issues/4706#issuecomment-633586051). Additionally you may want to install [Python 3.8](https://www.python.org/downloads/release/python-383/).
+
 
 ## For Developers
 ### Setup
