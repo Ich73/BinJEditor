@@ -27,7 +27,7 @@ from urllib.request import urlopen
 TABLE_PATH = 'Table/'
 CONFIG_FILE = 'config.json'
 
-VERSION = 'v1.0.1'
+VERSION = 'v1.0.2'
 REPOSITORY = r'Ich73/BinJEditor'
 AUTHOR = 'Dominik Beese 2020'
 
