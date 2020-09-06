@@ -304,25 +304,8 @@ class Window(QMainWindow):
 	def closeEvent(self, event):
 		# ask if file was changed
 		if self.changed:
-			msg = QMessageBox()
-			msg.setIcon(QMessageBox.Warning)
-			msg.setWindowTitle(self.tr('warning'))
-			msg.setWindowIcon(QIcon(ICON))
-			msg.setText(self.tr('warning.saveBeforeClosing'))
-			msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-			res = msg.exec_()
-			if res == QMessageBox.Yes:
-				# answer yes -> save or saveAs
-				if self.savable: self.saveFile()
-				else:
-					# save as
-					saved = self.saveFileAs()
-					if not saved: event.ignore() # aborted -> cancel
-			if res == QMessageBox.Cancel:
-				# answer cancel
-				event.ignore()
-		# close
-		pass
+			# ask to save and abort closing if did not save or cancel
+			if not self.askSaveWarning(self.tr('warning.saveBeforeClosing')): event.ignore()
 	
 	## UPDATES ##
 	
@@ -381,7 +364,7 @@ class Window(QMainWindow):
 	def openFile(self):
 		""" Opens a .savJ file. """
 		# ask if file was changed
-		if self.changed and not self.askWarning(self.tr('warning.continueLosesData')): return
+		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
 		dir = Config.get('savj-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -499,7 +482,7 @@ class Window(QMainWindow):
 	def importBinJ(self):
 		""" Imports a .binJ file. """
 		# ask if file was changed
-		if self.changed and not self.askWarning(self.tr('warning.continueLosesData')): return
+		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
 		dir = Config.get('binj-import-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -549,7 +532,7 @@ class Window(QMainWindow):
 	def importPatch(self):
 		""" Imports a patch from a .patJ or compatible .binJ file. """
 		# ask if file was changed
-		if self.changed and not self.askWarning(self.tr('warning.continueLosesData')): return
+		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
 		dir = Config.get('patj-import-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -710,6 +693,33 @@ class Window(QMainWindow):
 		if detailedText: msg.setDetailedText(detailedText)
 		msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 		return msg.exec_() == QMessageBox.Yes
+	
+	def askSaveWarning(self, text):
+		""" Displays a warning message and asks yes, no or cancel.
+			If yes was chosen, the current file will be saved.
+			Returns True if the file was successfully saved or No was chosen.
+		"""
+		msg = QMessageBox()
+		msg.setIcon(QMessageBox.Warning)
+		msg.setWindowTitle(self.tr('warning'))
+		msg.setWindowIcon(QIcon(ICON))
+		msg.setText(text)
+		msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+		res = msg.exec_()
+		if res == QMessageBox.Yes:
+			# yes -> save or saveAs
+			# return True if progress was saved
+			if self.savable:
+				self.saveFile()
+				return True
+			else:
+				return self.saveFileAs()
+		elif res == QMessageBox.No:
+			# no -> return True
+			return True
+		elif res == QMessageBox.Cancel:
+			# cancel -> return False
+			return False
 	
 	def showInfo(self, text, detailedText = None):
 		""" Displays a warning message. """
