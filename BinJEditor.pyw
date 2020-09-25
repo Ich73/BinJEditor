@@ -375,12 +375,12 @@ class Window(QMainWindow):
 		# load data
 		with ZipFile(filename, 'r') as zip:
 			prefix = zip.read('prefix.bin')
-			origj = zip.read('orig.datJ').decode('ANSI')
-			editj = zip.read('edit.datJ').decode('ANSI')
+			origj = zip.read('orig.datJ').decode('ASCII')
+			editj = zip.read('edit.datJ').decode('ASCII')
 			SEP = zip.read('SEP.bin')
 			specialj = zip.read('special.tabJ').decode('UTF-8')
-			decodej = zip.read('decode.tabJ').decode('ANSI')
-			encodej = zip.read('encode.tabJ').decode('ANSI')
+			decodej = zip.read('decode.tabJ').decode('ASCII')
+			encodej = zip.read('encode.tabJ').decode('ASCII')
 		orig_data = parseDatJ(origj)
 		edit_data = parseDatJ(editj)
 		special = parseTabJ(specialj, hexValue = False)
@@ -441,10 +441,10 @@ class Window(QMainWindow):
 		with open(prefix_filename, 'wb') as file:
 			file.write(self.prefix)
 		orig_filename = path.join(tempdir(), 'orig.datJ')
-		with open(orig_filename, 'w', encoding = 'ANSI') as file:
+		with open(orig_filename, 'w', encoding = 'ASCII') as file:
 			file.write(origj)
 		edit_filename = path.join(tempdir(), 'edit.datJ')
-		with open(edit_filename, 'w', encoding = 'ANSI') as file:
+		with open(edit_filename, 'w', encoding = 'ASCII') as file:
 			file.write(editj)
 		sep_filename = path.join(tempdir(), 'SEP.bin')
 		with open(sep_filename, 'wb') as file:
@@ -453,10 +453,10 @@ class Window(QMainWindow):
 		with open(special_filename, 'w', encoding = 'UTF-8') as file:
 			file.write(specialj)
 		decode_filename = path.join(tempdir(), 'decode.tabJ')
-		with open(decode_filename, 'w', encoding = 'ANSI') as file:
+		with open(decode_filename, 'w', encoding = 'ASCII') as file:
 			file.write(decodej)
 		encode_filename = path.join(tempdir(), 'encode.tabJ')
-		with open(encode_filename, 'w', encoding = 'ANSI') as file:
+		with open(encode_filename, 'w', encoding = 'ASCII') as file:
 			file.write(encodej)
 		# save savJ
 		with ZipFile(filename, 'w') as file:
@@ -543,7 +543,7 @@ class Window(QMainWindow):
 		
 		# import from patj
 		if type.lower() == '.patj':
-			with open(filename, 'r', encoding = 'ANSI') as file:
+			with open(filename, 'r', encoding = 'ASCII') as file:
 				patj = file.read()
 			edit_data = parseDatJ(patj)
 			# check if compatible
@@ -617,7 +617,7 @@ class Window(QMainWindow):
 		# create patj
 		patj = createDatJ([bytes for _, _, bytes, _ in self.data])
 		# save patJ
-		with open(filename, 'w', encoding = 'ANSI') as file:
+		with open(filename, 'w', encoding = 'ASCII') as file:
 			file.write(patj)
 		return True
 	
