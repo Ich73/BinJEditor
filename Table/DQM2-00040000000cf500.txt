@@ -19,7 +19,7 @@
 
 # 0B = ASCII Space, 0C = J-ASCII Space
 0B; 
-0C;( )
+0C;(　)
 
 # A-Z
 0D;A
