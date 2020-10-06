@@ -8,32 +8,32 @@
         <translation>Connect to `%s:%d`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1237"/>
+        <location filename="../../BinJEditor.pyw" line="1238"/>
         <source>send.login</source>
         <translation>Login as `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1241"/>
+        <location filename="../../BinJEditor.pyw" line="1242"/>
         <source>send.mkd</source>
         <translation>Create directory `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1244"/>
+        <location filename="../../BinJEditor.pyw" line="1245"/>
         <source>send.send</source>
         <translation>Send file `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1246"/>
+        <location filename="../../BinJEditor.pyw" line="1247"/>
         <source>send.quit</source>
         <translation>Disconnect</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1248"/>
+        <location filename="../../BinJEditor.pyw" line="1249"/>
         <source>send.done</source>
         <translation>Finished</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1250"/>
+        <location filename="../../BinJEditor.pyw" line="1251"/>
         <source>send.error</source>
         <translation>**Error:**</translation>
     </message>

@@ -1234,8 +1234,9 @@ class FTPClient(QDialog):
 				with FTP(timeout = 3) as ftp:
 					log(self.tr('send.connect') % (ip, port))
 					output(ftp.connect(host = ip, port = port))
-					log(self.tr('send.login') % user)
-					output(ftp.login(user = user, passwd = passwd))
+					if user:
+						log(self.tr('send.login') % user)
+						output(ftp.login(user = user, passwd = passwd))
 					for directory in directories:
 						if directory not in [dir for dir, _ in ftp.mlsd()]:
 							log(self.tr('send.mkd') % directory)
