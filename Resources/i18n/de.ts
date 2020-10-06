@@ -3,37 +3,37 @@
 <context>
     <name>FTPClient</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1169"/>
+        <location filename="../../BinJEditor.pyw" line="1235"/>
         <source>send.connect</source>
         <translation>Verbinden mit `%s:%d`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1171"/>
+        <location filename="../../BinJEditor.pyw" line="1237"/>
         <source>send.login</source>
         <translation>Einloggen als `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1175"/>
+        <location filename="../../BinJEditor.pyw" line="1241"/>
         <source>send.mkd</source>
         <translation>Erstelle Ordner `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1178"/>
+        <location filename="../../BinJEditor.pyw" line="1244"/>
         <source>send.send</source>
         <translation>Sende Datei `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1180"/>
+        <location filename="../../BinJEditor.pyw" line="1246"/>
         <source>send.quit</source>
         <translation>Verbindung trennen</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1182"/>
+        <location filename="../../BinJEditor.pyw" line="1248"/>
         <source>send.done</source>
         <translation>Fertig</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1184"/>
+        <location filename="../../BinJEditor.pyw" line="1250"/>
         <source>send.error</source>
         <translation>**Error:**</translation>
     </message>
@@ -121,7 +121,7 @@
         <translation>Geändeter Text</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="704"/>
+        <location filename="../../BinJEditor.pyw" line="710"/>
         <source>warning</source>
         <translation>Warnung</translation>
     </message>
@@ -201,7 +201,7 @@
         <translation>Über</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="754"/>
+        <location filename="../../BinJEditor.pyw" line="760"/>
         <source>appname</source>
         <translation>BinJ Editor</translation>
     </message>
@@ -211,27 +211,27 @@
         <translation>Präfix Länge: %d</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="650"/>
+        <location filename="../../BinJEditor.pyw" line="656"/>
         <source>settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="652"/>
+        <location filename="../../BinJEditor.pyw" line="658"/>
         <source>dlg.editSeparatorToken</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Das Trennzeichen [SEP] wird beim Importieren neuer BinJ-Dateien benutzt.&lt;br&gt;Bestehende Sicherung-Dateien (.savJ) werden nicht beinflusst.&lt;/p&gt;&lt;p&gt;Die Eingabe erfolgt als Hex Code, z.B. &lt;code&gt;E31B&lt;/code&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="657"/>
+        <location filename="../../BinJEditor.pyw" line="663"/>
         <source>error.editSeparatorTokenFailed</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Der eingegeben Wert ist ungültig.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="666"/>
+        <location filename="../../BinJEditor.pyw" line="672"/>
         <source>error</source>
         <translation>Fehler</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1028"/>
+        <location filename="../../BinJEditor.pyw" line="1094"/>
         <source>error.unknownChar</source>
         <translation>Unbekanntes Zeichen: &apos;%s&apos;</translation>
     </message>
@@ -251,162 +251,162 @@
         <translation>⨉</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="143"/>
+        <location filename="../Forms/window.ui" line="146"/>
         <source>File</source>
         <translation>Datei</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="191"/>
+        <location filename="../Forms/window.ui" line="194"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="158"/>
+        <location filename="../Forms/window.ui" line="161"/>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="165"/>
+        <location filename="../Forms/window.ui" line="168"/>
         <source>Edit</source>
         <translation>Bearbeiten</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="169"/>
+        <location filename="../Forms/window.ui" line="172"/>
         <source>Decoding Table</source>
         <translation>Decoding Tabelle</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="178"/>
+        <location filename="../Forms/window.ui" line="181"/>
         <source>View</source>
         <translation>Ansicht</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="185"/>
+        <location filename="../Forms/window.ui" line="188"/>
         <source>Tools</source>
         <translation>Werkzeuge</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="212"/>
+        <location filename="../Forms/window.ui" line="215"/>
         <source>Open...</source>
         <translation>Öffnen...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="215"/>
+        <location filename="../Forms/window.ui" line="218"/>
         <source>Ctrl+O</source>
         <translation>Ctrl+O</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="220"/>
+        <location filename="../Forms/window.ui" line="223"/>
         <source>About BinJ Editor...</source>
         <translation>Über BinJ Editor...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="225"/>
+        <location filename="../Forms/window.ui" line="228"/>
         <source>Import...</source>
         <translation>Importieren...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="228"/>
+        <location filename="../Forms/window.ui" line="231"/>
         <source>Ctrl+I</source>
         <translation>Ctrl+I</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="236"/>
+        <location filename="../Forms/window.ui" line="239"/>
         <source>Export...</source>
         <translation>Exportieren...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="239"/>
+        <location filename="../Forms/window.ui" line="242"/>
         <source>Ctrl+E</source>
         <translation>Ctrl+E</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="247"/>
+        <location filename="../Forms/window.ui" line="250"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="250"/>
+        <location filename="../Forms/window.ui" line="253"/>
         <source>Ctrl+S</source>
         <translation>Ctrl+S</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="258"/>
+        <location filename="../Forms/window.ui" line="261"/>
         <source>Save As...</source>
         <translation>Speichern unter...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="261"/>
+        <location filename="../Forms/window.ui" line="264"/>
         <source>Ctrl+Shift+S</source>
         <translation>Ctrl+Shift+S</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="269"/>
+        <location filename="../Forms/window.ui" line="272"/>
         <source>Create patch...</source>
         <translation>Patch erstellen...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="277"/>
+        <location filename="../Forms/window.ui" line="280"/>
         <source>Apply patch...</source>
         <translation>Patch anwenden...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="288"/>
+        <location filename="../Forms/window.ui" line="291"/>
         <source>Hide empty texts</source>
         <translation>Leere Texte verbergen</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="296"/>
+        <location filename="../Forms/window.ui" line="299"/>
         <source>Show prefix...</source>
         <translation>Präfix anzeigen...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="307"/>
+        <location filename="../Forms/window.ui" line="310"/>
         <source>Table from savJ</source>
         <translation>Tabelle aus savJ</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="312"/>
+        <location filename="../Forms/window.ui" line="315"/>
         <source>Separator Token...</source>
         <translation>Trennzeichen...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="320"/>
+        <location filename="../Forms/window.ui" line="323"/>
         <source>Send via FTP...</source>
         <translation>Mit FTP senden...</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="323"/>
+        <location filename="../Forms/window.ui" line="326"/>
         <source>F5</source>
         <translation>F5</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="331"/>
+        <location filename="../Forms/window.ui" line="334"/>
         <source>No table</source>
         <translation>Keine Tabelle</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="195"/>
+        <location filename="../Forms/window.ui" line="198"/>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="339"/>
+        <location filename="../Forms/window.ui" line="342"/>
         <source>English</source>
         <translation>Englisch</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="347"/>
+        <location filename="../Forms/window.ui" line="350"/>
         <source>German</source>
         <translation>Deutsch</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="728"/>
+        <location filename="../../BinJEditor.pyw" line="734"/>
         <source>information</source>
         <translation>Information</translation>
     </message>
     <message>
-        <location filename="../Forms/window.ui" line="352"/>
+        <location filename="../Forms/window.ui" line="355"/>
         <source>Check for Updates...</source>
         <translation>Auf Updates prüfen...</translation>
     </message>

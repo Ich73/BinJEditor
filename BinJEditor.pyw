@@ -17,7 +17,7 @@ import json
 import re
 import sys
 import os
-from os import path
+from os import path, linesep
 from zipfile import ZipFile
 from tempfile import gettempdir as tempdir
 from ftplib import FTP
@@ -640,7 +640,13 @@ class Window(QMainWindow):
 		msg.setWindowTitle(self.tr('appname'))
 		msg.setWindowIcon(QIcon(ICON))
 		msg.setText(self.tr('prefix.length') % len(self.prefix))
-		msg.setDetailedText(createHex(self.prefix))
+		details = ''
+		for i in range(0, len(self.prefix), 4):
+			if details:
+				if i % 8 == 0: details += linesep
+				else: details += '  '
+			details += createHex(self.prefix[i:i+4])
+		msg.setDetailedText(details)
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
@@ -942,17 +948,57 @@ class Window(QMainWindow):
 	
 	def tableCellKeyPressed(self, row, column, keys):
 		""" Called when a key is pressed while focussing a table cell. """
+		# Ctrl+C -> copy
+		if {Qt.Key_Control, Qt.Key_C} == keys:
+			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
+			
+			# create copy string
+			s, lr = ('', None)
+			for r, c in sorted(indices):
+				text = self.table.item(r, c).text()
+				if lr is not None: s += '\t' if r == lr else linesep # go to next row or column
+				s += text
+				lr = r
+			
+			# copy to clipboard
+			clipboard.copy(s)
+			return
+		
 		# Ctrl+V -> paste
 		if {Qt.Key_Control, Qt.Key_V} == keys:
-			for r in range(self.table.rowCount()):
-				if self.table.isRowHidden(r): continue # only paste to visible cells
+			# get clipboard content
+			content = clipboard.paste() # get clipboard content
+			content = content.splitlines() # split content into lines
+			
+			# collect indices for pasting
+			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
+			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
+			if not indices: return
+			if len(set(c for _, c in indices)) > 1: # filter if multiple columns selected
+				indices = [(r, c) for r, c in indices if c == 4] # prefer copy to text
+				content = [x.split('\t')[1] if '\t' in x else x for x in content] # use second column only
+			elif '\t' in content[0]: # filter if single column selected but content has many columns
+				index = 0 if indices[0][1] == 3 else 1
+				content = [x.split('\t')[index] for x in content] # use corresponding column only
+			
+			# paste
+			for i, (r, c) in enumerate(indices):
+				if len(content) == 1: text = content[0] # always use single line
+				elif i < len(content): text = content[i] # use next line
+				else: break # stop pasting
+				
 				bytes_cell = self.table.item(r, 3)
 				list_cell  = self.table.item(r, 4)
 				id = self.table.item(r, 0).int - 1 # logical row
 				
+				# paste to bytes
+				if c == 3:
+					bytes = parseHex(text)
+					lst = bytes2list(bytes, self.decodingTable, self.SEP) # convert to list
+				
 				# paste to text
-				if list_cell.isSelected(): # only paste bytes or list
-					lst = text2list(clipboard.paste())
+				elif c == 4:
+					lst = text2list(text)
 					# convert to bytes
 					try:
 						bytes = list2bytes(lst, self.decodingTable, self.SEP)
@@ -965,12 +1011,6 @@ class Window(QMainWindow):
 						self.editing = False
 						break # break loop
 				
-				# paste to bytes
-				elif bytes_cell.isSelected():
-					bytes = parseHex(clipboard.paste())
-					lst = bytes2list(bytes, self.decodingTable, self.SEP) # convert to list
-				else: continue
-				
 				# change data and cells
 				self.editing = True
 				self.updateFilename()
@@ -981,22 +1021,24 @@ class Window(QMainWindow):
 		
 		# Ctrl+X -> cut
 		if {Qt.Key_Control, Qt.Key_X} == keys:
-			if len(self.table.selectedItems()) == 1 and column in [3, 4]:
-				clipboard.copy(self.table.item(row, column).text())
-				id = self.table.item(row, 0).int - 1 # logical row
-				self.editing = True
-				self.updateFilename()
-				self.table.item(row, 3).setBytes(b'')
-				self.table.item(row, 4).setList(list())
-				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
-				self.editing = False
-		
-		# Del -> clear
-		if Qt.Key_Delete in keys:
-			for item in self.table.selectedItems():
-				r, c = (self.table.row(item), self.table.column(item))
-				if c not in [3, 4]: continue
-				if self.table.isRowHidden(self.table.row(item)): continue # only delete if visible
+			# collect indices for pasting
+			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
+			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
+			columns = sorted({c for _, c in indices}) # collect columns
+			rows = sorted({r for r, _ in indices}) # collect rows
+			if not rows: return
+			
+			# create copy string and clear data
+			s = ''
+			for r in rows:
+				# copy
+				if s != '': s += linesep # go to next row
+				for j, c in enumerate(columns):
+					text = self.table.item(r, c).text()
+					if j: s += '\t' # go to next column
+					s += text
+				
+				# clear
 				id = self.table.item(r, 0).int - 1 # logical row
 				self.editing = True
 				self.updateFilename()
@@ -1004,11 +1046,35 @@ class Window(QMainWindow):
 				self.table.item(r, 4).setList(list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
 				self.editing = False
+			
+			# copy to clipboard
+			clipboard.copy(s)
+			return
+		
+		# Del -> clear
+		if Qt.Key_Delete in keys:
+			# collect indices for pasting
+			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
+			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
+			rows = {r for r, _ in indices} # collect rows
+			
+			for r in sorted(rows):
+				id = self.table.item(r, 0).int - 1 # logical row
+				self.editing = True
+				self.updateFilename()
+				self.table.item(r, 3).setBytes(b'')
+				self.table.item(r, 4).setList(list())
+				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
+				self.editing = False
+			return
 		
 		# Return/Enter -> next cell
 		if Qt.Key_Return in keys or Qt.Key_Enter in keys:
-			next_row = next((r for r in range(row + 1, self.table.rowCount()) if not self.table.isRowHidden(r)), row)
+			if Qt.Key_Shift in keys: # + Shift -> next empty cell
+				next_row = next((r for r in range(row + 1, self.table.rowCount()) if not self.table.isRowHidden(r) and not self.table.item(r, 4).text()), row)
+			else: next_row = next((r for r in range(row + 1, self.table.rowCount()) if not self.table.isRowHidden(r)), row)
 			self.table.setCurrentCell(next_row, column)
+			return
 	
 	def tableCellDoubleClicked(self, row, column):
 		if column not in [1, 2]: return
