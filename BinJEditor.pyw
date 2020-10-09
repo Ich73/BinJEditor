@@ -164,18 +164,27 @@ class Window(QMainWindow):
 		# key listener
 		self.keysPressed = set()
 		
-		# data
-		self.current_filename = None # the name of the currently loaded file
-		self.decodingTable = None # the current decoding table
-		self.data = None # the index, original bytes, original text, edited bytes, edited text
-		self.prefix = None # the prefix bytes
-		self.savj_decoding_table = None # the decoding table of the loaded file
-		self.changed = False # whether the loaded was edited
-		self.savable = False # whether the current file can be saved without save as
+		# state
+		self.info = {
+			'filename':      None, # the name of the currently loaded file
+			'decodingTable': None, # the current decoding table
+			'SEP':           None, # the current separator token
+		}
+		self.flag = {
+			'changed': False, # whether the loaded data was edited
+			'savable': False, # whether the current file can be saved without save as
+			'loading': False, # while setData() is running
+			'editing': False, # while some editing is done and tableCellChanged() should not run
+		}
+		self.cache = {
+			'decodingTableFromSave': None, # the decoding table of the loaded file
+		}
 		
-		# flags to prevent listeners from changing values
-		self.loading = False # while setData() is running
-		self.editing = False # while some editing is done and tableCellChanged() should not run
+		# data
+		self.data = None # list of original bytes, original text, edited bytes, edited text
+		self.extra = {
+			# 'prefix': None, # the prefix bytes
+		}
 		
 		# menu
 		self.actionOpen.triggered.connect(self.openFile)
@@ -303,7 +312,7 @@ class Window(QMainWindow):
 	
 	def closeEvent(self, event):
 		# ask if file was changed
-		if self.changed:
+		if self.flag['changed']:
 			# ask to save and abort closing if did not save or cancel
 			if not self.askSaveWarning(self.tr('warning.saveBeforeClosing')): event.ignore()
 	
@@ -364,7 +373,8 @@ class Window(QMainWindow):
 	def openFile(self):
 		""" Opens a .savJ file. """
 		# ask if file was changed
-		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		
 		# ask filename
 		dir = Config.get('savj-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -372,6 +382,7 @@ class Window(QMainWindow):
 		if not filename: return
 		Config.set('savj-dir', path.dirname(filename))
 		self.updateFilename(filename, True)
+		
 		# load data
 		with ZipFile(filename, 'r') as zip:
 			prefix = zip.read('prefix.bin')
@@ -388,26 +399,28 @@ class Window(QMainWindow):
 		encode = parseTabJ(encodej, hexValue = True)
 		decode = {**decode, **invertDict(encode)} # restore full decode
 		decodingTable = {'decode': decode, 'encode': encode, 'special': special}
+		
 		# set data
-		self.savj_decoding_table = decodingTable
-		self.editing = True
-		self.SEP = SEP
-		self.updateDecodingTable(self.actionDecodingTableFromSavJ) # select from savj
-		self.editing = False
-		self.setData(prefix, orig_data, edit_data)
+		self.flag['editing'] = True
+		self.cache['decodingTableFromSave'] = decodingTable
+		self.info['SEP'] = SEP
+		self.extra = {'prefix': prefix}
+		self.updateDecodingTable(self.actionDecodingTableFromSavJ)
+		self.flag['editing'] = False
+		self.setData(orig_data, edit_data)
 	
 	def saveFile(self):
 		""" Saves the current .savJ file. """
-		self.updateFilename(self.current_filename, True)
-		self._saveFile(self.current_filename)
+		self.updateFilename(self.info['filename'], True)
+		self._saveFile(self.info['filename'])
 		return True
 	
 	def saveFileAs(self):
 		""" Saves a .savJ file. """
 		# ask filename
 		dir = Config.get('savj-dir', None)
-		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
-		else: dir = path.splitext(self.current_filename)[0]
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
+		else: dir = path.splitext(self.info['filename'])[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, self.tr('type.savj'))
 		if not filename: return False
 		Config.set('savj-dir', path.dirname(filename))
@@ -430,16 +443,17 @@ class Window(QMainWindow):
 		# create data objects
 		origj = createDatJ([bytes for bytes, _, _, _ in self.data])
 		editj = createDatJ([bytes for _, _, bytes, _ in self.data])
-		specialj = createTabJ(self.decodingTable['special'], hexValue = False)
-		decode = self.decodingTable['decode']
-		encode = self.decodingTable['encode']
+		specialj = createTabJ(self.info['decodingTable']['special'], hexValue = False)
+		decode = self.info['decodingTable']['decode']
+		encode = self.info['decodingTable']['encode']
 		decode = {k: decode[k] for k in set(decode) - set(invertDict(encode))} # remove every char that is in encode as well
 		decodej = createTabJ(decode, hexValue = True)
 		encodej = createTabJ(encode, hexValue = True)
+		
 		# save temporary files
 		prefix_filename = path.join(tempdir(), 'prefix.bin')
 		with open(prefix_filename, 'wb') as file:
-			file.write(self.prefix)
+			file.write(self.extra['prefix'])
 		orig_filename = path.join(tempdir(), 'orig.datJ')
 		with open(orig_filename, 'w', encoding = 'ASCII') as file:
 			file.write(origj)
@@ -448,7 +462,7 @@ class Window(QMainWindow):
 			file.write(editj)
 		sep_filename = path.join(tempdir(), 'SEP.bin')
 		with open(sep_filename, 'wb') as file:
-			file.write(self.SEP)
+			file.write(self.info['SEP'])
 		special_filename = path.join(tempdir(), 'special.tabJ')
 		with open(special_filename, 'w', encoding = 'UTF-8') as file:
 			file.write(specialj)
@@ -458,6 +472,7 @@ class Window(QMainWindow):
 		encode_filename = path.join(tempdir(), 'encode.tabJ')
 		with open(encode_filename, 'w', encoding = 'ASCII') as file:
 			file.write(encodej)
+		
 		# save savJ
 		with ZipFile(filename, 'w') as file:
 			file.write(prefix_filename, arcname=path.basename(prefix_filename))
@@ -467,6 +482,7 @@ class Window(QMainWindow):
 			file.write(special_filename, arcname=path.basename(special_filename))
 			file.write(decode_filename, arcname=path.basename(decode_filename))
 			file.write(encode_filename, arcname=path.basename(encode_filename))
+		
 		# remove temporary files
 		os.remove(prefix_filename)
 		os.remove(orig_filename)
@@ -475,14 +491,15 @@ class Window(QMainWindow):
 		os.remove(special_filename)
 		os.remove(decode_filename)
 		os.remove(encode_filename)
+		
 		# update decoding table
-		self.savj_decoding_table = self.decodingTable
-		self.updateDecodingTable(self.actionDecodingTableFromSavJ) # select from savj
+		self.cache['decodingTableFromSave'] = self.info['decodingTable']
+		self.updateDecodingTable(self.actionDecodingTableFromSavJ)
 	
 	def importBinJ(self):
 		""" Imports a .binJ file. """
 		# ask if file was changed
-		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
 		dir = Config.get('binj-import-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -490,40 +507,45 @@ class Window(QMainWindow):
 		if not filename: return
 		Config.set('binj-import-dir', path.dirname(filename))
 		self.updateFilename(filename, False)
+		
 		# load binJ
 		with open(filename, 'rb') as file:
 			binj = file.read()
 		# load sep from config
-		self.SEP = parseHex(Config.get('SEP', 'E31B'))
+		self.info['SEP'] = parseHex(Config.get('SEP', 'E31B'))
+		
 		# set data
-		self.loading = True # update decoding table should not update filename
+		self.flag['loading'] = True # update decoding table should not update filename
 		if self.actionDecodingTableFromSavJ.isChecked():
 			self.updateDecodingTable(None) # select default if from savj was selected
-		self.savj_decoding_table = None
+		self.cache['decodingTableFromSave'] = None
+		self.flag['loading'] = False
 		try:
-			prefix, orig_data = parseBinJ(binj, self.SEP)
+			prefix, orig_data = parseBinJ(binj, self.info['SEP'])
+			self.extra['prefix'] = prefix
+			self.setData(orig_data)
 		except:
 			self.showError(self.tr('error.importFailed'))
-			self.SEP = None
+			self.info['filename'] = None
+			self.info['SEP'] = None
 			self.data = None
-			self.loading = False
-			self.setData(None, list())
-			self.current_filename = None
+			self.extra = dict()
 			self.updateFilename(None)
-			return
-		self.setData(prefix, orig_data)
+			self.setData(list())
 	
 	def exportBinJ(self):
 		""" Exports a .binJ file. """
 		dir = Config.get('binj-export-dir', None)
-		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
-		else: dir = path.splitext(self.current_filename)[0]
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
+		else: dir = path.splitext(self.info['filename'])[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.binj'))
 		if not filename: return False
 		Config.set('binj-export-dir', path.dirname(filename))
+		
 		# create binj
 		data = [edit if edit else orig for orig, _, edit, _ in self.data]
-		binj = createBinJ(self.prefix, data, self.SEP)
+		binj = createBinJ(self.extra['prefix'], data, self.info['SEP'])
+		
 		# save binJ
 		with open(filename, 'wb') as file:
 			file.write(binj)
@@ -532,7 +554,7 @@ class Window(QMainWindow):
 	def importPatch(self):
 		""" Imports a patch from a .patJ or compatible .binJ file. """
 		# ask if file was changed
-		if self.changed and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
 		dir = Config.get('patj-import-dir', None)
 		if dir and not path.exists(dir): dir = None
@@ -546,6 +568,7 @@ class Window(QMainWindow):
 			with open(filename, 'r', encoding = 'ASCII') as file:
 				patj = file.read()
 			edit_data = parseDatJ(patj)
+			
 			# check if compatible
 			if len(edit_data) != len(self.data):
 				# lengths differ -> show warning and ask to continue
@@ -553,20 +576,22 @@ class Window(QMainWindow):
 				# trim or pad edit data
 				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
 				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
+			
 			# set data
 			orig_data = [bytes for bytes, _, _, _ in self.data]
 			self.updateFilename() # show file changed
-			self.setData(self.prefix, orig_data, edit_data)
+			self.setData(orig_data, edit_data)
 		
 		# import from binj
 		elif type.lower() == '.binj':
 			with open(filename, 'rb') as file:
 				edit_binj = file.read()
+			
 			# check separator
-			if self.SEP != parseHex(Config.get('SEP', 'E31B')):
+			if self.info['SEP'] != parseHex(Config.get('SEP', 'E31B')):
 				# different tokens -> ask which one to use
 				sep_from_settings = Config.get('SEP', 'E31B')
-				sep_from_current_file = createHex(self.SEP).replace(' ', '')
+				sep_from_current_file = createHex(self.info['SEP']).replace(' ', '')
 				msg = QMessageBox()
 				msg.setIcon(QMessageBox.Critical)
 				msg.setWindowTitle(self.tr('warning'))
@@ -582,14 +607,15 @@ class Window(QMainWindow):
 				if msg.clickedButton() == button_from_settings:
 					SEP = parseHex(sep_from_settings)
 				elif msg.clickedButton() == button_from_current_file:
-					SEP = self.SEP
+					SEP = self.info['SEP']
 				else: return # abort
-			else: SEP = self.SEP
+			else: SEP = self.info['SEP']
 			try:
 				prefix, edit_data = parseBinJ(edit_binj, SEP)
 			except:
 				self.showError(self.tr('error.importFailed'))
 				return
+			
 			# check if compatible
 			if len(edit_data) != len(self.data): # check data length
 				# lengths differ -> show warning and ask to continue
@@ -597,25 +623,28 @@ class Window(QMainWindow):
 				# trim or pad edit data
 				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
 				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
-			if prefix != self.prefix:
+			if prefix != self.extra['prefix']:
 				# prefixes do not match -> show warning and ask to continue
 				if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+			
 			# set data
 			orig_data = [bytes for bytes, _, _, _ in self.data]
 			edit_data = [edit if edit != orig else b'' for orig, edit in zip(orig_data, edit_data)] # filter equal elements
 			self.updateFilename() # show file changed
-			self.setData(self.prefix, orig_data, edit_data)
+			self.setData(orig_data, edit_data)
 	
 	def exportPatch(self):
 		""" Exports a patch file as a .patJ file. """
 		dir = Config.get('patj-export-dir', None)
-		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.current_filename))[0])
-		else: dir = path.splitext(self.current_filename)[0]
+		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
+		else: dir = path.splitext(self.info['filename'])[0]
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.patj'))
 		if not filename: return False
 		Config.set('patj-export-dir', path.dirname(filename))
+		
 		# create patj
 		patj = createDatJ([bytes for _, _, bytes, _ in self.data])
+		
 		# save patJ
 		with open(filename, 'w', encoding = 'ASCII') as file:
 			file.write(patj)
@@ -639,13 +668,14 @@ class Window(QMainWindow):
 		msg = QMessageBox()
 		msg.setWindowTitle(self.tr('appname'))
 		msg.setWindowIcon(QIcon(ICON))
-		msg.setText(self.tr('prefix.length') % len(self.prefix))
+		prefix = self.extra['prefix']
+		msg.setText(self.tr('prefix.length') % len(prefix))
 		details = ''
-		for i in range(0, len(self.prefix), 4):
+		for i in range(0, len(prefix), 4):
 			if details:
 				if i % 8 == 0: details += linesep
 				else: details += '  '
-			details += createHex(self.prefix[i:i+4])
+			details += createHex(prefix[i:i+4])
 		msg.setDetailedText(details)
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
@@ -715,7 +745,7 @@ class Window(QMainWindow):
 		if res == QMessageBox.Yes:
 			# yes -> save or saveAs
 			# return True if progress was saved
-			if self.savable:
+			if self.flag['savable']:
 				self.saveFile()
 				return True
 			else:
@@ -742,24 +772,24 @@ class Window(QMainWindow):
 	
 	def updateFilename(self, filename = None, savable = None):
 		""" Called when a new file is loaded or an edit is made.
-			Updates the self.changed and self.current_filename variabe.
+			Updates the changed flag and filename info variabe.
 			Enables the actionSave option.
 			Sets the correct title of the window.
 		"""
 		# set changed, false if new file is loaded
-		self.changed = self.current_filename is not None and filename is None
+		self.flag['changed'] = self.info['filename'] is not None and filename is None
 		# store current filename and savable
-		if filename is not None: self.current_filename = filename
-		if savable is not None: self.savable = savable
+		if filename is not None: self.info['filename'] = filename
+		if savable is not None: self.flag['savable'] = savable
 		# activate/deactivate save action and from savj
-		self.actionSave.setEnabled(self.savable)
-		self.actionDecodingTableFromSavJ.setEnabled(self.savable)
+		self.actionSave.setEnabled(self.flag['savable'])
+		self.actionDecodingTableFromSavJ.setEnabled(self.flag['savable'])
 		# set window title
-		if self.current_filename:
-			self.setWindowTitle('%s%s - %s' % ('*' if self.changed else '', path.basename(self.current_filename), self.tr('appname')))
+		if self.info['filename']:
+			self.setWindowTitle('%s%s - %s' % ('*' if self.flag['changed'] else '', path.basename(self.info['filename']), self.tr('appname')))
 		else: self.setWindowTitle(self.tr('appname'))
 		# activate actions
-		actions_enabled = self.current_filename is not None
+		actions_enabled = self.info['filename'] is not None
 		self.actionSaveAs.setEnabled(actions_enabled)
 		self.actionExport.setEnabled(actions_enabled)
 		self.actionApplyPatch.setEnabled(actions_enabled)
@@ -769,22 +799,22 @@ class Window(QMainWindow):
 	
 	def updateDecodingTable(self, arg):
 		""" Called when a new decoding table is chosen.
-			Updates the self.decodingTable variable.
+			Updates the decodingTable info variable.
 			Updates the self.menuDecodingTableGroup.
 			Calls self.setData() if needed.
 		"""
 		# save table for later
-		oldTable = self.decodingTable
+		oldTable = self.info['decodingTable']
 		
 		# arg is decoding table from savj -> select from savj
 		if arg is self.actionDecodingTableFromSavJ:
 			self.menuDecodingTableGroup.actions()[0].setChecked(True)
-			self.decodingTable = self.savj_decoding_table
+			self.info['decodingTable'] = self.cache['decodingTableFromSave']
 		
 		# arg is no decoding table -> select none
 		elif arg is self.actionNoDecodingTable:
 			self.menuDecodingTableGroup.actions()[1].setChecked(True)
-			self.decodingTable = {'encode': dict(), 'decode': dict(), 'special': dict()}
+			self.info['decodingTable'] = {'encode': dict(), 'decode': dict(), 'special': dict()}
 		
 		# arg is None -> select default
 		elif arg is None:
@@ -797,8 +827,8 @@ class Window(QMainWindow):
 			action = self.menuDecodingTableGroup.actions()[idx]
 			action.setChecked(True)
 			if action is self.actionNoDecodingTable:
-				self.decodingTable = {'encode': dict(), 'decode': dict(), 'special': dict()}
-			else: self.decodingTable = parseDecodingTable(action.text())
+				self.info['decodingTable'] = {'encode': dict(), 'decode': dict(), 'special': dict()}
+			else: self.info['decodingTable'] = parseDecodingTable(action.text())
 		
 		# arg is normal option -> select option by given filename
 		else:
@@ -806,18 +836,18 @@ class Window(QMainWindow):
 			Config.set('decoding-table', filename)
 			action = next(action for action in self.menuDecodingTableGroup.actions() if action.text() == filename)
 			action.setChecked(True)
-			self.decodingTable = parseDecodingTable(filename)
+			self.info['decodingTable'] = parseDecodingTable(filename)
 		
 		# check whether data changed
-		if self.decodingTable != oldTable:
+		if self.info['decodingTable'] != oldTable:
 			# not loading -> show file changed
-			if not self.loading and not self.editing:
+			if not self.flag['loading'] and not self.flag['editing']:
 				self.updateFilename()
 			# file loaded -> update data
 			if self.data:
 				orig_data = [bytes for bytes, _, _, _ in self.data]
 				edit_data = [bytes for _, _, bytes, _ in self.data]
-				self.setData(self.prefix, orig_data, edit_data)
+				self.setData(orig_data, edit_data)
 	
 	def resizeTable(self):
 		""" Resizes the table.
@@ -832,27 +862,26 @@ class Window(QMainWindow):
 	
 	## DATA ##
 	
-	def setData(self, prefix, orig_data, edit_data = None):
+	def setData(self, orig_data, edit_data = None):
 		""" Sets the data from the given prefix, original bytes and edited bytes.
-			Updates self.prefix and self.data.
+			Updates the data.
 			Resizes the table by calling self.resizeTable().
 		"""
 		# clear table and data, start loading
-		self.loading = True
+		self.flag['loading'] = True
 		self.table.setSortingEnabled(False)
 		self.editFilter.clear()
 		self.table.setRowCount(0)
-		self.prefix = prefix
 		oldLength = len(self.data) if self.data else 0
 		self.data = list()
 		
 		# add to data and table
 		for i, orig_key in enumerate(orig_data):
-			orig_value = bytes2list(orig_key, self.decodingTable, self.SEP)
+			orig_value = bytes2list(orig_key, self.info['decodingTable'], self.info['SEP'])
 			# get edit data
 			if edit_data and edit_data[i]:
 				edit_key = edit_data[i]
-				edit_value = bytes2list(edit_key, self.decodingTable, self.SEP)
+				edit_value = bytes2list(edit_key, self.info['decodingTable'], self.info['SEP'])
 			else: edit_key, edit_value = (b'', list())
 			# add to data
 			self.data.append((orig_key, orig_value, edit_key, edit_value))
@@ -882,11 +911,11 @@ class Window(QMainWindow):
 		self.resizeTable()
 		if len(self.data) != oldLength: # scroll to top if data changed
 			self.table.verticalScrollBar().setValue(0)
-		QTimer.singleShot(10, self.resizeTable) # wait for scrollbar
+		QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
 		self.editFilter.setText('')
 		self.table.setSortingEnabled(True)
 		self.filterData()
-		self.loading = False
+		self.flag['loading'] = False
 	
 	def filterData(self):
 		""" Filters the data. Does not search the index. """
@@ -910,9 +939,9 @@ class Window(QMainWindow):
 	
 	def tableCellChanged(self, row, column):
 		""" Called when a cell was changed.
-			Updates self.data.
+			Updates the data.
 		"""
-		if self.loading or self.editing: return
+		if self.flag['loading'] or self.flag['editing']: return
 		
 		# get cells
 		bytes_cell = self.table.item(row, 3)
@@ -922,29 +951,29 @@ class Window(QMainWindow):
 		# edit bytes
 		if column == 3:
 			bytes = bytes_cell.bytes
-			lst = bytes2list(bytes, self.decodingTable, self.SEP) # convert to list
+			lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # convert to list
 		
 		# edit text
 		if column == 4:
 			lst = list_cell.lst
 			# convert to bytes
 			try:
-				bytes = list2bytes(lst, self.decodingTable, self.SEP)
-				lst = bytes2list(bytes, self.decodingTable, self.SEP) # de-escape chars
+				bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
+				lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
 			except Exception as e:
 				self.showError(self.tr('error.unknownChar') % e.args[0])
-				self.editing = True
+				self.flag['editing'] = True
 				list_cell.setList(self.data[id][3])
-				self.editing = False
+				self.flag['editing'] = False
 				return
 		
 		# change data and cells
-		self.editing = True
+		self.flag['editing'] = True
 		self.updateFilename()
 		bytes_cell.setBytes(bytes)
 		list_cell.setList(lst)
 		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-		self.editing = False
+		self.flag['editing'] = False
 	
 	def tableCellKeyPressed(self, row, column, keys):
 		""" Called when a key is pressed while focussing a table cell. """
@@ -994,30 +1023,30 @@ class Window(QMainWindow):
 				# paste to bytes
 				if c == 3:
 					bytes = parseHex(text)
-					lst = bytes2list(bytes, self.decodingTable, self.SEP) # convert to list
+					lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # convert to list
 				
 				# paste to text
 				elif c == 4:
 					lst = text2list(text)
 					# convert to bytes
 					try:
-						bytes = list2bytes(lst, self.decodingTable, self.SEP)
-						lst = bytes2list(bytes, self.decodingTable, self.SEP) # de-escape chars
+						bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
+						lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
 					except Exception as e:
 						self.showError(self.tr('error.unknownChar') % e.args[0])
 						self.keysPressed.clear() # prevent keys from keeping pressed
-						self.editing = True
+						self.flag['editing'] = True
 						list_cell.setList(self.data[id][3])
-						self.editing = False
+						self.flag['editing'] = False
 						break # break loop
 				
 				# change data and cells
-				self.editing = True
+				self.flag['editing'] = True
 				self.updateFilename()
 				bytes_cell.setBytes(bytes)
 				list_cell.setList(lst)
 				self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-				self.editing = False
+				self.flag['editing'] = False
 		
 		# Ctrl+X -> cut
 		if {Qt.Key_Control, Qt.Key_X} == keys:
@@ -1040,12 +1069,12 @@ class Window(QMainWindow):
 				
 				# clear
 				id = self.table.item(r, 0).int - 1 # logical row
-				self.editing = True
+				self.flag['editing'] = True
 				self.updateFilename()
 				self.table.item(r, 3).setBytes(b'')
 				self.table.item(r, 4).setList(list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
-				self.editing = False
+				self.flag['editing'] = False
 			
 			# copy to clipboard
 			clipboard.copy(s)
@@ -1060,12 +1089,12 @@ class Window(QMainWindow):
 			
 			for r in sorted(rows):
 				id = self.table.item(r, 0).int - 1 # logical row
-				self.editing = True
+				self.flag['editing'] = True
 				self.updateFilename()
 				self.table.item(r, 3).setBytes(b'')
 				self.table.item(r, 4).setList(list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
-				self.editing = False
+				self.flag['editing'] = False
 			return
 		
 		# Return/Enter -> next cell
@@ -1088,26 +1117,26 @@ class Window(QMainWindow):
 			lst = self.data[id][1]
 			# convert to bytes
 			try:
-				bytes = list2bytes(lst, self.decodingTable, self.SEP)
-				lst = bytes2list(bytes, self.decodingTable, self.SEP) # de-escape chars
+				bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
+				lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
 			except Exception as e:
 				self.showError(self.tr('error.unknownChar') % e.args[0])
 				self.keysPressed.clear() # prevent keys from keeping pressed
 				return # abort
-		self.editing = True
+		self.flag['editing'] = True
 		self.updateFilename()
 		self.table.item(row, 3).setBytes(bytes)
 		self.table.item(row, 4).setList(lst)
 		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-		self.editing = False
+		self.flag['editing'] = False
 	
 	## MISC ##
 	
 	def showFTPClient(self):
 		# create temporary binj file
 		data = [edit if edit else orig for orig, _, edit, _ in self.data]
-		binj = createBinJ(self.prefix, data, self.SEP)
-		filename = path.join(tempdir(), path.splitext(path.basename(self.current_filename))[0] + '.binJ')
+		binj = createBinJ(self.extra['prefix'], data, self.info['SEP'])
+		filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.binJ')
 		with open(filename, 'wb') as file:
 			file.write(binj)
 		

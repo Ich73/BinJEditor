@@ -3,37 +3,37 @@
 <context>
     <name>FTPClient</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1235"/>
+        <location filename="../../BinJEditor.pyw" line="1264"/>
         <source>send.connect</source>
         <translation>Connect to `%s:%d`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1238"/>
+        <location filename="../../BinJEditor.pyw" line="1267"/>
         <source>send.login</source>
         <translation>Login as `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1242"/>
+        <location filename="../../BinJEditor.pyw" line="1271"/>
         <source>send.mkd</source>
         <translation>Create directory `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1245"/>
+        <location filename="../../BinJEditor.pyw" line="1274"/>
         <source>send.send</source>
         <translation>Send file `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1247"/>
+        <location filename="../../BinJEditor.pyw" line="1276"/>
         <source>send.quit</source>
         <translation>Disconnect</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1249"/>
+        <location filename="../../BinJEditor.pyw" line="1278"/>
         <source>send.done</source>
         <translation>Finished</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1251"/>
+        <location filename="../../BinJEditor.pyw" line="1280"/>
         <source>send.error</source>
         <translation>**Error:**</translation>
     </message>
@@ -96,142 +96,142 @@
 <context>
     <name>Window</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="254"/>
+        <location filename="../../BinJEditor.pyw" line="263"/>
         <source>id</source>
         <translation>ID</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="254"/>
+        <location filename="../../BinJEditor.pyw" line="263"/>
         <source>orig.bytes</source>
         <translation>Original Bytes</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="254"/>
+        <location filename="../../BinJEditor.pyw" line="263"/>
         <source>orig.text</source>
         <translation>Original Text</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="254"/>
+        <location filename="../../BinJEditor.pyw" line="263"/>
         <source>edit.bytes</source>
         <translation>Edited Bytes</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="254"/>
+        <location filename="../../BinJEditor.pyw" line="263"/>
         <source>edit.text</source>
         <translation>Edited Text</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="710"/>
+        <location filename="../../BinJEditor.pyw" line="740"/>
         <source>warning</source>
         <translation>Warning</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="308"/>
+        <location filename="../../BinJEditor.pyw" line="317"/>
         <source>warning.saveBeforeClosing</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;The program is about to close.&lt;/p&gt;&lt;p&gt;Save your progress?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="535"/>
+        <location filename="../../BinJEditor.pyw" line="557"/>
         <source>warning.saveBeforeOpening</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;There are unsaved changes.&lt;/p&gt;&lt;p&gt;Save your progress?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="371"/>
+        <location filename="../../BinJEditor.pyw" line="381"/>
         <source>open</source>
         <translation>Open</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="411"/>
+        <location filename="../../BinJEditor.pyw" line="424"/>
         <source>type.savj</source>
         <translation>Save Files (*.savJ)</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="411"/>
+        <location filename="../../BinJEditor.pyw" line="424"/>
         <source>saveAs</source>
         <translation>Save As</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="539"/>
+        <location filename="../../BinJEditor.pyw" line="561"/>
         <source>import</source>
         <translation>Import</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="539"/>
+        <location filename="../../BinJEditor.pyw" line="561"/>
         <source>type.binj</source>
         <translation>BinJ Files (*.binJ)</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="591"/>
+        <location filename="../../BinJEditor.pyw" line="616"/>
         <source>error.importFailed</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Importing binJ file failed.&lt;/p&gt;&lt;p&gt;The file may be corrupted or the separator token is incorrect.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="614"/>
+        <location filename="../../BinJEditor.pyw" line="641"/>
         <source>export</source>
         <translation>Export</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="539"/>
+        <location filename="../../BinJEditor.pyw" line="561"/>
         <source>type.patj_binj</source>
         <translation>All Supported Files (*.patJ; *.binJ)</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="614"/>
+        <location filename="../../BinJEditor.pyw" line="641"/>
         <source>type.patj</source>
         <translation>Patch Files (*.patJ)</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="596"/>
+        <location filename="../../BinJEditor.pyw" line="622"/>
         <source>warning.lengthsDiffer</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Lengths differ.&lt;br&gt;The patch is not perfectly compatible.&lt;/p&gt;&lt;p&gt;Continue?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="574"/>
+        <location filename="../../BinJEditor.pyw" line="599"/>
         <source>warning.differentSeparatorTokens</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;The separator tokens [SEP] of the current file and the configuration differ.&lt;/p&gt;&lt;p&gt;Continue with the separator from the configuration &lt;code&gt;%s&lt;/code&gt; or the separator from the current file &lt;code&gt;%s&lt;/code&gt;?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="602"/>
+        <location filename="../../BinJEditor.pyw" line="628"/>
         <source>warning.prefixesDiffer</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Prefixes differ&lt;br&gt;The patch is for another file.&lt;/p&gt;&lt;p&gt;Continue?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="630"/>
+        <location filename="../../BinJEditor.pyw" line="659"/>
         <source>about.title</source>
         <translation>About</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="760"/>
+        <location filename="../../BinJEditor.pyw" line="790"/>
         <source>appname</source>
         <translation>BinJ Editor</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="642"/>
+        <location filename="../../BinJEditor.pyw" line="672"/>
         <source>prefix.length</source>
         <translation>Prefix length: %d</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="656"/>
+        <location filename="../../BinJEditor.pyw" line="686"/>
         <source>settings</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="658"/>
+        <location filename="../../BinJEditor.pyw" line="688"/>
         <source>dlg.editSeparatorToken</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;The separator token [SEP] is used for imporing binJ files.&lt;br&gt;Saved savJ files are not affected.&lt;/p&gt;&lt;p&gt;Enter the token&apos;s hex value, e.g. &lt;code&gt;E31B&lt;/code&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="663"/>
+        <location filename="../../BinJEditor.pyw" line="693"/>
         <source>error.editSeparatorTokenFailed</source>
         <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;The value is invalid.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="672"/>
+        <location filename="../../BinJEditor.pyw" line="702"/>
         <source>error</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1094"/>
+        <location filename="../../BinJEditor.pyw" line="1123"/>
         <source>error.unknownChar</source>
         <translation>Unknwon char: &apos;%s&apos;</translation>
     </message>
@@ -401,7 +401,7 @@
         <translation>German</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="734"/>
+        <location filename="../../BinJEditor.pyw" line="764"/>
         <source>information</source>
         <translation>Information</translation>
     </message>
@@ -411,42 +411,42 @@
         <translation>Check for Updates...</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="332"/>
+        <location filename="../../BinJEditor.pyw" line="341"/>
         <source>update.newestVersion</source>
         <translation>You already have the newest version of %s.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="336"/>
+        <location filename="../../BinJEditor.pyw" line="345"/>
         <source>update.newerVersion</source>
         <translation>You have a newer version of %s than found.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="344"/>
+        <location filename="../../BinJEditor.pyw" line="353"/>
         <source>update.newVersionAvailable</source>
         <translation>A new version of %s is available.</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="344"/>
+        <location filename="../../BinJEditor.pyw" line="353"/>
         <source>update.currentVersion</source>
         <translation>Current Version</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="344"/>
+        <location filename="../../BinJEditor.pyw" line="353"/>
         <source>update.newVersion</source>
         <translation>New Version</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="344"/>
+        <location filename="../../BinJEditor.pyw" line="353"/>
         <source>update.doWhat</source>
         <translation>What do you wish to do?</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="348"/>
+        <location filename="../../BinJEditor.pyw" line="357"/>
         <source>update.openWebsite</source>
         <translation>Open Website</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="360"/>
+        <location filename="../../BinJEditor.pyw" line="369"/>
         <source>update.failed</source>
         <translation>Checking for updates failed.</translation>
     </message>
