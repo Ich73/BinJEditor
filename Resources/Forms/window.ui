@@ -171,7 +171,7 @@
      <property name="title">
       <string>Decoding Table</string>
      </property>
-     <addaction name="actionDecodingTableFromSavJ"/>
+     <addaction name="actionDecodingTableFromSav"/>
      <addaction name="actionNoDecodingTable"/>
     </widget>
     <addaction name="menuDecodingTable"/>
@@ -181,7 +181,6 @@
      <string>View</string>
     </property>
     <addaction name="actionHideEmptyTexts"/>
-    <addaction name="actionShowPrefix"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -199,6 +198,7 @@
      </property>
      <addaction name="actionGerman"/>
      <addaction name="actionEnglish"/>
+     <addaction name="actionSpanish"/>
     </widget>
     <addaction name="menuLanguage"/>
     <addaction name="actionSeparatorToken"/>
@@ -215,12 +215,15 @@
     <string>Open...</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+O</string>
+    <string notr="true">Ctrl+O</string>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
     <string>About BinJ Editor...</string>
+   </property>
+   <property name="shortcut">
+    <string notr="true">F1</string>
    </property>
   </action>
   <action name="actionImport">
@@ -228,7 +231,7 @@
     <string>Import...</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+I</string>
+    <string notr="true">Ctrl+I</string>
    </property>
   </action>
   <action name="actionExport">
@@ -239,7 +242,7 @@
     <string>Export...</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+E</string>
+    <string notr="true">Ctrl+E</string>
    </property>
   </action>
   <action name="actionSave">
@@ -250,7 +253,7 @@
     <string>Save</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+S</string>
+    <string notr="true">Ctrl+S</string>
    </property>
   </action>
   <action name="actionSaveAs">
@@ -261,7 +264,7 @@
     <string>Save As...</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+Shift+S</string>
+    <string notr="true">Ctrl+Shift+S</string>
    </property>
   </action>
   <action name="actionCreatePatch">
@@ -299,7 +302,7 @@
     <string>Show prefix...</string>
    </property>
   </action>
-  <action name="actionDecodingTableFromSavJ">
+  <action name="actionDecodingTableFromSav">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -307,7 +310,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Table from savJ</string>
+    <string>Table from Save</string>
    </property>
   </action>
   <action name="actionSeparatorToken">
@@ -323,7 +326,7 @@
     <string>Send via FTP...</string>
    </property>
    <property name="shortcut">
-    <string>F5</string>
+    <string notr="true">F5</string>
    </property>
   </action>
   <action name="actionNoDecodingTable">
@@ -339,7 +342,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>English</string>
+    <string notr="true">English</string>
    </property>
   </action>
   <action name="actionGerman">
@@ -347,12 +350,20 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>German</string>
+    <string notr="true">Deutsch</string>
    </property>
   </action>
   <action name="actionCheckForUpdates">
    <property name="text">
     <string>Check for Updates...</string>
+   </property>
+  </action>
+  <action name="actionSpanish">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Español</string>
    </property>
   </action>
  </widget>

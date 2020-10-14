@@ -5,32 +5,32 @@
     <message>
         <location filename="../../BinJEditor.pyw" line="1363"/>
         <source>send.connect</source>
-        <translation>Verbinden mit `%s:%d`</translation>
+        <translation>Conectarse a `%s:%d`</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1366"/>
         <source>send.login</source>
-        <translation>Einloggen als `%s`</translation>
+        <translation>Iniciar sesión como `%s`</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1370"/>
         <source>send.mkd</source>
-        <translation>Erstelle Ordner `%s`</translation>
+        <translation>Crear directorio `%s`</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1373"/>
         <source>send.send</source>
-        <translation>Sende Datei `%s`</translation>
+        <translation>Enviar archivo `%s`</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1375"/>
         <source>send.quit</source>
-        <translation>Verbindung trennen</translation>
+        <translation>Desconectarse</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1377"/>
         <source>send.done</source>
-        <translation>Fertig</translation>
+        <translation>Completado</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1379"/>
@@ -40,57 +40,57 @@
     <message>
         <location filename="../Forms/ftpclient.ui" line="29"/>
         <source>Send via FTP...</source>
-        <translation>Mit FTP senden</translation>
+        <translation>Enviar por FTP...</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="44"/>
         <source>Connection Settings</source>
-        <translation>Verbindungseinstellungen</translation>
+        <translation>Ajustes de conexión</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="51"/>
         <source>3DS IP:</source>
-        <translation>3DS IP:</translation>
+        <translation>IP del 3DS:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="65"/>
         <source>Port:</source>
-        <translation>Port:</translation>
+        <translation>Puerto:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="79"/>
         <source>User:</source>
-        <translation>Benutzer:</translation>
+        <translation>Usuario:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="93"/>
         <source>Password:</source>
-        <translation>Passwort:</translation>
+        <translation>Contraseña:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="138"/>
         <source>Game Settings</source>
-        <translation>Spieleinstellungen</translation>
+        <translation>Ajustes del juego</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="145"/>
         <source>Title ID:</source>
-        <translation>Spiel ID:</translation>
+        <translation>ID del título:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="159"/>
         <source>Directory:</source>
-        <translation>Ordner:</translation>
+        <translation>Directorio:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="173"/>
         <source>Filename:</source>
-        <translation>Dateiname:</translation>
+        <translation>Nombre de archivo:</translation>
     </message>
     <message>
         <location filename="../Forms/ftpclient.ui" line="203"/>
         <source>Send</source>
-        <translation>Senden</translation>
+        <translation>Enviar</translation>
     </message>
 </context>
 <context>
@@ -103,152 +103,152 @@
     <message>
         <location filename="../../BinJEditor.pyw" line="269"/>
         <source>orig.bytes</source>
-        <translation>Original Bytes</translation>
+        <translation>Bytes originales</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="269"/>
         <source>orig.text</source>
-        <translation>Original Text</translation>
+        <translation>Texto original</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="269"/>
         <source>edit.bytes</source>
-        <translation>Geänderte Bytes</translation>
+        <translation>Bytes editados</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="269"/>
         <source>edit.text</source>
-        <translation>Geändeter Text</translation>
+        <translation>Texto editado</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="828"/>
         <source>warning</source>
-        <translation>Warnung</translation>
+        <translation>Advertencia</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="314"/>
         <source>warning.saveBeforeClosing</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Nicht gespeicherte Änderungen gehen verloren.&lt;/p&gt;&lt;p&gt;Datei speichern?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;El programa está a punto de cerrarse.&lt;/p&gt;&lt;p&gt;¿Guardar los cambios?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="634"/>
         <source>warning.saveBeforeOpening</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Nicht gespeicherte Änderungen gehen verloren.&lt;/p&gt;&lt;p&gt;Datei speichern?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Hay modificaciones sin guardar.&lt;/p&gt;&lt;p&gt;¿Guardar los cambios?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="378"/>
         <source>open</source>
-        <translation>Öffnen</translation>
+        <translation>Abrir</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="378"/>
         <source>type.savj_save</source>
-        <translation>Alle unterstützen Dateien (*.savJ; *.savE)</translation>
+        <translation>Todos los archivos compatibles (*.savJ; *.savE)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="440"/>
         <source>type.savj</source>
-        <translation>BinJ-Sicherung-Dateien (*.savJ)</translation>
+        <translation>Archivos de guardado BinJ (*.savJ)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="440"/>
         <source>type.save</source>
-        <translation>E-Sicherung-Dateien (*.savE)</translation>
+        <translation>Archivos de guardado E (*.savE)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="440"/>
         <source>saveAs</source>
-        <translation>Speichern unter</translation>
+        <translation>Guardar como</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="642"/>
         <source>import</source>
-        <translation>Importieren</translation>
+        <translation>Importar</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="572"/>
         <source>type.binj_e</source>
-        <translation>Alle unterstützen Dateien (*.binJ; *.e)</translation>
+        <translation>Todos los archivos compatibles (*.binJ; *.e)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="639"/>
         <source>type.binj</source>
-        <translation>BinJ-Dateien (*.binJ)</translation>
+        <translation>Archivos BinJ (*.binJ)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="640"/>
         <source>type.e</source>
-        <translation>E-Dateien (*.e)</translation>
+        <translation>Archivos E (*.e)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="700"/>
         <source>error.importFailed</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Das Laden der Datei ist fehlgeschlagen.&lt;/p&gt;&lt;p&gt;Entweder ist die Datei beschädigt oder das eigenstellte Trennzeichen ist nicht für die Datei geeignet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Falló la importación del archivo.&lt;/p&gt;&lt;p&gt;Puede que el archivo esté dañado o el símbolo separador no sea correcto.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="740"/>
         <source>export</source>
-        <translation>Exportieren</translation>
+        <translation>Exportar</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="639"/>
         <source>type.patj_binj</source>
-        <translation>Alle unterstützen Dateien (*.patJ; *.binJ)</translation>
+        <translation>Todos los archivos compatibles (*.patJ; *.binJ)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="640"/>
         <source>type.pate_e</source>
-        <translation>Alle unterstützen Dateien (*.patE; *.e)</translation>
+        <translation>Todos los archivos compatibles (*.patE; *.e)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="740"/>
         <source>type.patj</source>
-        <translation>Patch-Dateien (*.patJ)</translation>
+        <translation>Archivos de parche (*.patJ)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="740"/>
         <source>type.pate</source>
-        <translation>Patch-Dateien (*.patE)</translation>
+        <translation>Archivos de parche (*.patE)</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="706"/>
         <source>warning.lengthsDiffer</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Längen sind unterschiedlich.&lt;br&gt;Der Patch ist nicht perfekt kompatibel.&lt;/p&gt;&lt;p&gt;Wirklich fortfahren?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Las dimensiones son diferentes.&lt;br&gt;El parche no es perfectamente compatible.&lt;/p&gt;&lt;p&gt;¿Continuar?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="677"/>
         <source>warning.differentSeparatorTokens</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Trennzeichen [SEP] der Einstellungen und der geladenen Datei sind unterschiedlich.&lt;/p&gt;&lt;p&gt;Soll zum Importieren mit dem Trennzeichen der Einstellungen &lt;code&gt;%s&lt;/code&gt; oder dem Trennzeichen der geladenen Datei &lt;code&gt;%s&lt;/code&gt; gearbeitet werden?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Los símbolos separadores [SEP] del archivo actual difieren de los configurados.&lt;/p&gt;&lt;p&gt;¿Continuar con el separador configurado &lt;code&gt;%s&lt;/code&gt; o el separador del archivo actual &lt;code&gt;%s&lt;/code&gt;?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="721"/>
         <source>warning.prefixesDiffer</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Präfixe sind unterschiedlich.&lt;br&gt;Der Patch ist für eine andere Datei.&lt;/p&gt;&lt;p&gt;Wirklich fortfahren?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Los prefijos son diferentes.&lt;br&gt;El parche es para otro archivo.&lt;/p&gt;&lt;p&gt;¿Continuar?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="723"/>
         <source>warning.HeadersDiffer</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Datei-Header sind unterschiedlich.&lt;br&gt;Der Patch ist für eine andere Datei.&lt;/p&gt;&lt;p&gt;Wirklich fortfahren?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Los prefijos son diferentes.&lt;br&gt;El parche es para otro archivo.&lt;/p&gt;&lt;p&gt;¿Continuar?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="725"/>
         <source>warning.ScriptsDiffer</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Skripte sind unterschiedlich.&lt;br&gt;Der Patch ist für eine andere Datei.&lt;/p&gt;&lt;p&gt;Wirklich fortfahren?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Las secuencias de comandos son diferentes.&lt;br&gt;El parche es para otro archivo.&lt;/p&gt;&lt;p&gt;¿Continuar?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="727"/>
         <source>warning.LinksDiffer</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Die Pointer sind unterschiedlich.&lt;br&gt;Der Patch ist für eine andere Datei.&lt;/p&gt;&lt;p&gt;Wirklich fortfahren?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Los punteros son diferentes.&lt;br&gt;El parche es para otro archivo.&lt;/p&gt;&lt;p&gt;¿Continuar?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="759"/>
         <source>about.title</source>
-        <translation>Über</translation>
+        <translation>Acerca de</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="767"/>
         <source>about.specialThanks</source>
-        <translation>Besonderer Dank an %s</translation>
+        <translation>Agradecimientos especiales a %s</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="878"/>
@@ -258,27 +258,27 @@
     <message>
         <location filename="../../BinJEditor.pyw" line="774"/>
         <source>settings</source>
-        <translation>Einstellungen</translation>
+        <translation>Ajustes</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="776"/>
         <source>dlg.editSeparatorToken</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Das Trennzeichen [SEP] wird beim Importieren von BinJ- und E-Dateien benutzt.&lt;br&gt;Bestehende Sicherung-Dateien (.savJ, .savE) werden nicht beinflusst.&lt;/p&gt;&lt;p&gt;Die Eingabe erfolgt als Hex Code, z.B. &lt;code&gt;E31B&lt;/code&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;El símbolo separador [SEP] se usa para importar archivos binJ y e.&lt;br&gt;Los archivos savJ y savE guardados no se ven afectados.&lt;/p&gt;&lt;p&gt;Introduzca el valor hexadecimal del símbolo, ej. &lt;code&gt;E31B&lt;/code&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="781"/>
         <source>error.editSeparatorTokenFailed</source>
-        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;Der eingegeben Wert ist ungültig.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;body&gt;&lt;p&gt;El valor no es válido.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="790"/>
         <source>error</source>
-        <translation>Fehler</translation>
+        <translation>Error</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="1210"/>
         <source>error.unknownChar</source>
-        <translation>Unbekanntes Zeichen: &apos;%s&apos;</translation>
+        <translation>Caracter desconocido: &apos;%s&apos;</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="14"/>
@@ -288,7 +288,7 @@
     <message>
         <location filename="../Forms/window.ui" line="44"/>
         <source>Filter</source>
-        <translation>Filter</translation>
+        <translation>Filtrar</translation>
     </message>
     <message encoding="UTF-8">
         <location filename="../Forms/window.ui" line="60"/>
@@ -298,162 +298,162 @@
     <message>
         <location filename="../Forms/window.ui" line="146"/>
         <source>File</source>
-        <translation>Datei</translation>
+        <translation>Archivo</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="193"/>
         <source>Settings</source>
-        <translation>Einstellungen</translation>
+        <translation>Ajustes</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="161"/>
         <source>Help</source>
-        <translation>Hilfe</translation>
+        <translation>Ayuda</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="168"/>
         <source>Edit</source>
-        <translation>Bearbeiten</translation>
+        <translation>Edición</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="172"/>
         <source>Decoding Table</source>
-        <translation>Decoding Tabelle</translation>
+        <translation>Tabla de decodificación</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="181"/>
         <source>View</source>
-        <translation>Ansicht</translation>
+        <translation>Ver</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="187"/>
         <source>Tools</source>
-        <translation>Werkzeuge</translation>
+        <translation>Herramientas</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="215"/>
         <source>Open...</source>
-        <translation>Öffnen...</translation>
+        <translation>Abrir...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="223"/>
         <source>About BinJ Editor...</source>
-        <translation>Über BinJ Editor...</translation>
+        <translation>Acerca de BinJ Editor...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="231"/>
         <source>Import...</source>
-        <translation>Importieren...</translation>
+        <translation>Importar...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="242"/>
         <source>Export...</source>
-        <translation>Exportieren...</translation>
+        <translation>Exportar...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="253"/>
         <source>Save</source>
-        <translation>Speichern</translation>
+        <translation>Guardar</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="264"/>
         <source>Save As...</source>
-        <translation>Speichern unter...</translation>
+        <translation>Guardar como...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="275"/>
         <source>Create patch...</source>
-        <translation>Patch erstellen...</translation>
+        <translation>Crear parche...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="283"/>
         <source>Apply patch...</source>
-        <translation>Patch anwenden...</translation>
+        <translation>Aplicar parche...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="294"/>
         <source>Hide empty texts</source>
-        <translation>Leere Texte verbergen</translation>
+        <translation>Ocultar textos vacíos</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="302"/>
         <source>Show prefix...</source>
-        <translation>Präfix anzeigen...</translation>
+        <translation>Mostrar prefijo...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="313"/>
         <source>Table from Save</source>
-        <translation>Tabelle aus Sicherung</translation>
+        <translation>Tabla de save</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="318"/>
         <source>Separator Token...</source>
-        <translation>Trennzeichen...</translation>
+        <translation>Símbolo separador...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="326"/>
         <source>Send via FTP...</source>
-        <translation>Mit FTP senden...</translation>
+        <translation>Enviar por FTP...</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="337"/>
         <source>No table</source>
-        <translation>Keine Tabelle</translation>
+        <translation>Sin tabla</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="197"/>
         <source>Language</source>
-        <translation>Sprache</translation>
+        <translation>Idioma</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="852"/>
         <source>information</source>
-        <translation>Information</translation>
+        <translation>Información</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="358"/>
         <source>Check for Updates...</source>
-        <translation>Auf Updates prüfen...</translation>
+        <translation>Comprobar actualizaciones...</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="338"/>
         <source>update.newestVersion</source>
-        <translation>%s ist bereits auf dem neusten Stand.</translation>
+        <translation>Ya tiene la versión más reciente de %s.</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="342"/>
         <source>update.newerVersion</source>
-        <translation>%s ist neuer als die gefundene Version.</translation>
+        <translation>Su versión de %s es más reciente que la encontrada.</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="350"/>
         <source>update.newVersionAvailable</source>
-        <translation>Eine neue Version von %s ist verfügbar.</translation>
+        <translation>Hay una nueva versión de %s disponible.</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="350"/>
         <source>update.currentVersion</source>
-        <translation>Aktuelle Version</translation>
+        <translation>Versión actual</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="350"/>
         <source>update.newVersion</source>
-        <translation>Neue Version</translation>
+        <translation>Nueva versión</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="350"/>
         <source>update.doWhat</source>
-        <translation>Was möchtest du machen?</translation>
+        <translation>¿Qué desea hacer?</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="354"/>
         <source>update.openWebsite</source>
-        <translation>Website öffnen</translation>
+        <translation>Abrir sitio web</translation>
     </message>
     <message>
         <location filename="../../BinJEditor.pyw" line="366"/>
         <source>update.failed</source>
-        <translation>Auf Updates prüfen ist fehlgeschlagen.</translation>
+        <translation>Falló la comprobación de actualizaciones.</translation>
     </message>
 </context>
 </TS>

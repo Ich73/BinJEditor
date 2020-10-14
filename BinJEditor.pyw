@@ -19,6 +19,7 @@ import sys
 import os
 from os import path, linesep
 from zipfile import ZipFile
+from gzip import GzipFile
 from tempfile import gettempdir as tempdir
 from ftplib import FTP
 import webbrowser
@@ -30,6 +31,7 @@ CONFIG_FILE = 'config.json'
 VERSION = 'v1.1.0'
 REPOSITORY = r'Ich73/BinJEditor'
 AUTHOR = 'Dominik Beese 2020'
+SPECIAL_THANKS = 'Frank Colmines'
 
 
 ###########
@@ -167,6 +169,7 @@ class Window(QMainWindow):
 		# state
 		self.info = {
 			'filename':      None, # the name of the currently loaded file
+			'mode':          None, # the current mode ('binJ' or 'e')
 			'decodingTable': None, # the current decoding table
 			'SEP':           None, # the current separator token
 		}
@@ -177,7 +180,7 @@ class Window(QMainWindow):
 			'editing': False, # while some editing is done and tableCellChanged() should not run
 		}
 		self.cache = {
-			'decodingTableFromSave': None, # the decoding table of the loaded file
+			'decodingTableFromSave': None, # the decoding table of the loaded save file
 		}
 		
 		# data
@@ -190,15 +193,14 @@ class Window(QMainWindow):
 		self.actionOpen.triggered.connect(self.openFile)
 		self.actionSave.triggered.connect(self.saveFile)
 		self.actionSaveAs.triggered.connect(self.saveFileAs)
-		self.actionImport.triggered.connect(self.importBinJ)
-		self.actionExport.triggered.connect(self.exportBinJ)
+		self.actionImport.triggered.connect(self.importFile)
+		self.actionExport.triggered.connect(self.exportFile)
 		self.actionApplyPatch.triggered.connect(self.importPatch)
 		self.actionCreatePatch.triggered.connect(self.exportPatch)
 		self.actionSeparatorToken.triggered.connect(self.editSeparatorToken)
 		
 		self.actionHideEmptyTexts.setChecked(Config.get('hide-empty-texts', True))
 		self.actionHideEmptyTexts.triggered.connect(self.filterData)
-		self.actionShowPrefix.triggered.connect(self.showPrefix)
 		
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
 		
@@ -207,7 +209,7 @@ class Window(QMainWindow):
 		
 		# decoding table
 		self.menuDecodingTableGroup = QActionGroup(self.menuDecodingTable)
-		self.menuDecodingTableGroup.addAction(self.actionDecodingTableFromSavJ) # table from savj
+		self.menuDecodingTableGroup.addAction(self.actionDecodingTableFromSav) # table from save
 		self.menuDecodingTableGroup.addAction(self.actionNoDecodingTable) # no table
 		if not path.exists(TABLE_PATH): os.makedirs(TABLE_PATH) # create directory if missing
 		for file in [f for f in os.listdir(TABLE_PATH) if path.splitext(f)[1] == '.txt']:
@@ -222,6 +224,7 @@ class Window(QMainWindow):
 		self.menuLanguageGroup = QActionGroup(self.menuLanguage)
 		self.menuLanguageGroup.addAction(self.actionGerman)
 		self.menuLanguageGroup.addAction(self.actionEnglish)
+		self.menuLanguageGroup.addAction(self.actionSpanish)
 		self.menuLanguageGroup.triggered.connect(self.retranslateUi)
 		
 		# filter
@@ -246,6 +249,7 @@ class Window(QMainWindow):
 		action2locale = {
 			self.actionGerman: 'de',
 			self.actionEnglish: 'en',
+			self.actionSpanish: 'es',
 		}
 		if language is None:
 			locale = Config.get('language', QLocale.system().name().split('_')[0])
@@ -255,43 +259,36 @@ class Window(QMainWindow):
 		Config.set('language', locale)
 		translator.load(':/Resources/i18n/%s.qm' % locale)
 		app.installTranslator(translator)
+		baseTranslator.load(':/Resources/i18n/qtbase_%s.qm' % locale)
+		app.installTranslator(baseTranslator)
 		
 		# update texts
-		self.setWindowTitle(self.tr("BinJEditor"))
-		self.editFilter.setPlaceholderText(self.tr("Filter"))
-		self.buttonFilter.setText(self.tr("⨉"))
+		self.setWindowTitle(self.tr('BinJEditor'))
+		self.editFilter.setPlaceholderText(self.tr('Filter'))
+		self.buttonFilter.setText(self.tr('⨉'))
 		self.table.setHorizontalHeaderLabels([self.tr('id'), self.tr('orig.bytes'), self.tr('orig.text'), self.tr('edit.bytes'), self.tr('edit.text')])
-		self.menuFile.setTitle(self.tr("File"))
-		self.menuHelp.setTitle(self.tr("Help"))
-		self.menuEdit.setTitle(self.tr("Edit"))
-		self.menuDecodingTable.setTitle(self.tr("Decoding Table"))
-		self.menuView.setTitle(self.tr("View"))
-		self.menuTools.setTitle(self.tr("Tools"))
-		self.menuSettings.setTitle(self.tr("Settings"))
-		self.menuLanguage.setTitle(self.tr("Language"))
-		self.actionOpen.setText(self.tr("Open..."))
-		self.actionOpen.setShortcut(self.tr("Ctrl+O"))
-		self.actionAbout.setText(self.tr("About BinJ Editor..."))
-		self.actionCheckForUpdates.setText(self.tr("Check for Updates..."))
-		self.actionImport.setText(self.tr("Import..."))
-		self.actionImport.setShortcut(self.tr("Ctrl+I"))
-		self.actionExport.setText(self.tr("Export..."))
-		self.actionExport.setShortcut(self.tr("Ctrl+E"))
-		self.actionSave.setText(self.tr("Save"))
-		self.actionSave.setShortcut(self.tr("Ctrl+S"))
-		self.actionSaveAs.setText(self.tr("Save As..."))
-		self.actionSaveAs.setShortcut(self.tr("Ctrl+Shift+S"))
-		self.actionCreatePatch.setText(self.tr("Create patch..."))
-		self.actionApplyPatch.setText(self.tr("Apply patch..."))
-		self.actionHideEmptyTexts.setText(self.tr("Hide empty texts"))
-		self.actionShowPrefix.setText(self.tr("Show prefix..."))
-		self.actionDecodingTableFromSavJ.setText(self.tr("Table from savJ"))
-		self.actionSeparatorToken.setText(self.tr("Separator Token..."))
-		self.actionFTPClient.setText(self.tr("Send via FTP..."))
-		self.actionFTPClient.setShortcut(self.tr("F5"))
-		self.actionNoDecodingTable.setText(self.tr("No table"))
-		self.actionEnglish.setText(self.tr("English"))
-		self.actionGerman.setText(self.tr("German"))
+		self.menuFile.setTitle(self.tr('File'))
+		self.menuHelp.setTitle(self.tr('Help'))
+		self.menuEdit.setTitle(self.tr('Edit'))
+		self.menuDecodingTable.setTitle(self.tr('Decoding Table'))
+		self.menuView.setTitle(self.tr('View'))
+		self.menuTools.setTitle(self.tr('Tools'))
+		self.menuSettings.setTitle(self.tr('Settings'))
+		self.menuLanguage.setTitle(self.tr('Language'))
+		self.actionOpen.setText(self.tr('Open...'))
+		self.actionAbout.setText(self.tr('About BinJ Editor...'))
+		self.actionCheckForUpdates.setText(self.tr('Check for Updates...'))
+		self.actionImport.setText(self.tr('Import...'))
+		self.actionExport.setText(self.tr('Export...'))
+		self.actionSave.setText(self.tr('Save'))
+		self.actionSaveAs.setText(self.tr('Save As...'))
+		self.actionCreatePatch.setText(self.tr('Create patch...'))
+		self.actionApplyPatch.setText(self.tr('Apply patch...'))
+		self.actionHideEmptyTexts.setText(self.tr('Hide empty texts'))
+		self.actionDecodingTableFromSav.setText(self.tr('Table from Save'))
+		self.actionSeparatorToken.setText(self.tr('Separator Token...'))
+		self.actionFTPClient.setText(self.tr('Send via FTP...'))
+		self.actionNoDecodingTable.setText(self.tr('No table'))
 	
 	def keyPressEvent(self, event):
 		""" Custom key press event. """
@@ -371,21 +368,41 @@ class Window(QMainWindow):
 	## FILES ##
 	
 	def openFile(self):
-		""" Opens a .savJ file. """
+		""" Opens a .savJ or .savE file. """
 		# ask if file was changed
 		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		
 		# ask filename
-		dir = Config.get('savj-dir', None)
+		dir = Config.get('sav-dir', None)
 		if dir and not path.exists(dir): dir = None
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('open'), dir, self.tr('type.savj'))
+		filename, _ = QFileDialog.getOpenFileName(self, self.tr('open'), dir, self.tr('type.savj_save') + ';;' + self.tr('type.savj') + ';;' + self.tr('type.save'))
 		if not filename: return
-		Config.set('savj-dir', path.dirname(filename))
+		_, type = path.splitext(filename)
+		Config.set('sav-dir', path.dirname(filename))
 		self.updateFilename(filename, True)
 		
-		# load data
+		# load and set extra for savJ, set mode
+		if type.lower() == '.savj':
+			with ZipFile(filename, 'r') as zip:
+				prefix = zip.read('prefix.bin')
+			self.extra = {'prefix': prefix}
+			self.info['mode'] = 'binJ'
+		
+		# load and set extra for savE, set mode
+		elif type.lower() == '.save':
+			with ZipFile(filename, 'r') as zip:
+				prefix = zip.read('prefix.bin')
+				header = zip.read('header.datE').decode('ASCII')
+				scripts = zip.read('scripts.spt').decode('ASCII')
+				links = zip.read('links.tabE').decode('ASCII')
+			header = parseDatE(header)
+			scripts = parseSpt(scripts)
+			links = parseTabE(links)
+			self.extra = {'prefix': prefix, 'header': header, 'scripts': scripts, 'links': links}
+			self.info['mode'] = 'e'
+		
+		# load data for both
 		with ZipFile(filename, 'r') as zip:
-			prefix = zip.read('prefix.bin')
 			origj = zip.read('orig.datJ').decode('ASCII')
 			editj = zip.read('edit.datJ').decode('ASCII')
 			SEP = zip.read('SEP.bin')
@@ -404,34 +421,32 @@ class Window(QMainWindow):
 		self.flag['editing'] = True
 		self.cache['decodingTableFromSave'] = decodingTable
 		self.info['SEP'] = SEP
-		self.extra = {'prefix': prefix}
-		self.updateDecodingTable(self.actionDecodingTableFromSavJ)
+		self.updateDecodingTable(self.actionDecodingTableFromSav)
 		self.flag['editing'] = False
 		self.setData(orig_data, edit_data)
 	
 	def saveFile(self):
-		""" Saves the current .savJ file. """
+		""" Saves the current .savJ or .savE file. """
 		self.updateFilename(self.info['filename'], True)
 		self._saveFile(self.info['filename'])
 		return True
 	
 	def saveFileAs(self):
-		""" Saves a .savJ file. """
+		""" Saves a .savJ or .savE file. """
 		# ask filename
-		dir = Config.get('savj-dir', None)
+		dir = Config.get('sav-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.splitext(self.info['filename'])[0]
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, self.tr('type.savj'))
+		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, {'binJ': self.tr('type.savj'), 'e': self.tr('type.save')}[self.info['mode']])
 		if not filename: return False
-		Config.set('savj-dir', path.dirname(filename))
+		Config.set('sav-dir', path.dirname(filename))
 		self.updateFilename(filename, True)
-		# save savJ
+		# save savJ or savE
 		self._saveFile(filename)
 		return True
 	
 	def _saveFile(self, filename):
-		""" Implements the saving of .savJ files.
-			Writes the prefix to 'prefix.bin'.
+		""" Implements the saving of .savJ and .savE files.
 			Writes the original text to 'orig.datJ'.
 			Writes the edited text to 'edit.datJ'.
 			Writes the SEP char to 'SEP.bin'.
@@ -439,6 +454,15 @@ class Window(QMainWindow):
 			Writes the reduced decoding table to 'decode.tabJ'.
 			Writes the encoding table to 'encode.tabJ'.
 			Stores these files an the given file as a zip archive.
+			
+			For .savJ files:
+			  Writes the prefix to 'prefix.bin'.
+			
+			For .savE files:
+			  Writes the prefix to 'prefix.bin'.
+			  Writes the header to 'header.datE'.
+			  Writes the scripts to 'scripts.spt'.
+			  Writes the links to 'links.tabE'.
 		"""
 		# create data objects
 		origj = createDatJ([bytes for bytes, _, _, _ in self.data])
@@ -451,9 +475,6 @@ class Window(QMainWindow):
 		encodej = createTabJ(encode, hexValue = True)
 		
 		# save temporary files
-		prefix_filename = path.join(tempdir(), 'prefix.bin')
-		with open(prefix_filename, 'wb') as file:
-			file.write(self.extra['prefix'])
 		orig_filename = path.join(tempdir(), 'orig.datJ')
 		with open(orig_filename, 'w', encoding = 'ASCII') as file:
 			file.write(origj)
@@ -473,101 +494,161 @@ class Window(QMainWindow):
 		with open(encode_filename, 'w', encoding = 'ASCII') as file:
 			file.write(encodej)
 		
+		# create data objects and save temporary files for savJ
+		if self.info['mode'] == 'binJ':
+			prefix_filename = path.join(tempdir(), 'prefix.bin')
+			with open(prefix_filename, 'wb') as file:
+				file.write(self.extra['prefix'])
+		
+		# create data objects and save temporary files for savE
+		elif self.info['mode'] == 'e':
+			prefix_filename = path.join(tempdir(), 'prefix.bin')
+			with open(prefix_filename, 'wb') as file:
+				file.write(self.extra['prefix'])
+			header = createDatE(self.extra['header'])
+			header_filename = path.join(tempdir(), 'header.datE')
+			with open(header_filename, 'w', encoding = 'ASCII') as file:
+				file.write(header)
+			scripts = createSpt(self.extra['scripts'])
+			scripts_filename = path.join(tempdir(), 'scripts.spt')
+			with open(scripts_filename, 'w', encoding = 'ASCII') as file:
+				file.write(scripts)
+			links = createTabE(self.extra['links'])
+			links_filename = path.join(tempdir(), 'links.tabE')
+			with open(links_filename, 'w', encoding = 'ASCII') as file:
+				file.write(links)
+		
 		# save savJ
-		with ZipFile(filename, 'w') as file:
-			file.write(prefix_filename, arcname=path.basename(prefix_filename))
-			file.write(orig_filename, arcname=path.basename(orig_filename))
-			file.write(edit_filename, arcname=path.basename(edit_filename))
-			file.write(sep_filename, arcname=path.basename(sep_filename))
-			file.write(special_filename, arcname=path.basename(special_filename))
-			file.write(decode_filename, arcname=path.basename(decode_filename))
-			file.write(encode_filename, arcname=path.basename(encode_filename))
+		if self.info['mode'] == 'binJ':
+			with ZipFile(filename, 'w') as file:
+				file.write(orig_filename, arcname=path.basename(orig_filename))
+				file.write(edit_filename, arcname=path.basename(edit_filename))
+				file.write(sep_filename, arcname=path.basename(sep_filename))
+				file.write(special_filename, arcname=path.basename(special_filename))
+				file.write(decode_filename, arcname=path.basename(decode_filename))
+				file.write(encode_filename, arcname=path.basename(encode_filename))
+				file.write(prefix_filename, arcname=path.basename(prefix_filename))
+		
+		# save savE
+		elif self.info['mode'] == 'e':
+			with ZipFile(filename, 'w') as file:
+				file.write(orig_filename, arcname=path.basename(orig_filename))
+				file.write(edit_filename, arcname=path.basename(edit_filename))
+				file.write(sep_filename, arcname=path.basename(sep_filename))
+				file.write(special_filename, arcname=path.basename(special_filename))
+				file.write(decode_filename, arcname=path.basename(decode_filename))
+				file.write(encode_filename, arcname=path.basename(encode_filename))
+				file.write(prefix_filename, arcname=path.basename(prefix_filename))
+				file.write(header_filename, arcname=path.basename(header_filename))
+				file.write(scripts_filename, arcname=path.basename(scripts_filename))
+				file.write(links_filename, arcname=path.basename(links_filename))
 		
 		# remove temporary files
-		os.remove(prefix_filename)
 		os.remove(orig_filename)
 		os.remove(edit_filename)
 		os.remove(sep_filename)
 		os.remove(special_filename)
 		os.remove(decode_filename)
 		os.remove(encode_filename)
+		if self.info['mode'] == 'binJ':
+			os.remove(prefix_filename)
+		elif self.info['mode'] == 'e':
+			os.remove(prefix_filename)
+			os.remove(header_filename)
+			os.remove(scripts_filename)
+			os.remove(links_filename)
 		
 		# update decoding table
 		self.cache['decodingTableFromSave'] = self.info['decodingTable']
-		self.updateDecodingTable(self.actionDecodingTableFromSavJ)
+		self.updateDecodingTable(self.actionDecodingTableFromSav)
 	
-	def importBinJ(self):
-		""" Imports a .binJ file. """
+	def importFile(self):
+		""" Imports a .binJ or .e file. """
 		# ask if file was changed
 		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
-		dir = Config.get('binj-import-dir', None)
+		dir = Config.get('import-file-dir', None)
 		if dir and not path.exists(dir): dir = None
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.binj'))
+		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.binj_e') + ';;' + self.tr('type.binj') + ';;' + self.tr('type.e'))
 		if not filename: return
-		Config.set('binj-import-dir', path.dirname(filename))
+		_, type = path.splitext(filename)
+		Config.set('import-file-dir', path.dirname(filename))
 		self.updateFilename(filename, False)
 		
-		# load binJ
-		with open(filename, 'rb') as file:
-			binj = file.read()
 		# load sep from config
 		self.info['SEP'] = parseHex(Config.get('SEP', 'E31B'))
 		
-		# set data
+		# update decoding table
 		self.flag['loading'] = True # update decoding table should not update filename
-		if self.actionDecodingTableFromSavJ.isChecked():
-			self.updateDecodingTable(None) # select default if from savj was selected
+		if self.actionDecodingTableFromSav.isChecked(): self.updateDecodingTable(None) # select default if from savj was selected
 		self.cache['decodingTableFromSave'] = None
 		self.flag['loading'] = False
+		
+		# load and set data, set mode
 		try:
-			prefix, orig_data = parseBinJ(binj, self.info['SEP'])
-			self.extra['prefix'] = prefix
+			if type.lower() == '.binj':
+				with open(filename, 'rb') as file: bin = file.read()
+				orig_data, extra = parseBinJ(bin, self.info['SEP'])
+				self.info['mode'] = 'binJ'
+			elif type.lower() == '.e':
+				with GzipFile(filename, 'r') as file: bin = file.read()
+				orig_data, extra = parseE(bin, self.info['SEP'])
+				self.info['mode'] = 'e'
+			self.extra = extra
 			self.setData(orig_data)
 		except:
 			self.showError(self.tr('error.importFailed'))
 			self.info['filename'] = None
+			self.info['mode'] = None
 			self.info['SEP'] = None
 			self.data = None
 			self.extra = dict()
 			self.updateFilename(None)
 			self.setData(list())
 	
-	def exportBinJ(self):
-		""" Exports a .binJ file. """
-		dir = Config.get('binj-export-dir', None)
+	def exportFile(self):
+		""" Exports a .binJ or .e file. """
+		dir = Config.get('export-file-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.splitext(self.info['filename'])[0]
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.binj'))
+		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.binj'), 'e': self.tr('type.e')}[self.info['mode']])
 		if not filename: return False
-		Config.set('binj-export-dir', path.dirname(filename))
+		Config.set('export-file-dir', path.dirname(filename))
 		
-		# create binj
+		# create data
 		data = [edit if edit else orig for orig, _, edit, _ in self.data]
-		binj = createBinJ(self.extra['prefix'], data, self.info['SEP'])
 		
-		# save binJ
-		with open(filename, 'wb') as file:
-			file.write(binj)
+		# save data
+		if self.info['mode'] == 'binJ':
+			bin = createBinJ(data, self.info['SEP'], self.extra)
+			with open(filename, 'wb') as file: file.write(bin)
+		elif self.info['mode'] == 'e':
+			bin = createE(data, self.info['SEP'], self.extra)
+			with GzipFile(filename, 'w') as file: file.write(bin)
+		
 		return True
 	
 	def importPatch(self):
-		""" Imports a patch from a .patJ or compatible .binJ file. """
+		""" Imports a patch from a .patJ / .patE or compatible .binJ / .e file. """
 		# ask if file was changed
 		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
 		# ask filename
-		dir = Config.get('patj-import-dir', None)
+		dir = Config.get('import-patch-dir', None)
 		if dir and not path.exists(dir): dir = None
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.patj_binj') + ';;' + self.tr('type.patj') + ';;' + self.tr('type.binj'))
-		_, type = path.splitext(filename)
+		extensions = {
+			'binJ': self.tr('type.patj_binj') + ';;' + self.tr('type.patj') + ';;' + self.tr('type.binj'),
+			'e':    self.tr('type.pate_e')    + ';;' + self.tr('type.pate') + ';;' + self.tr('type.e')
+		}[self.info['mode']]
+		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, extensions)
 		if not filename: return
-		Config.set('patj-import-dir', path.dirname(filename))
+		_, type = path.splitext(filename)
+		Config.set('import-patch-dir', path.dirname(filename))
 		
-		# import from patj
-		if type.lower() == '.patj':
+		# import from patj / pate
+		if type.lower() in ['.patj', '.pate']:
 			with open(filename, 'r', encoding = 'ASCII') as file:
-				patj = file.read()
-			edit_data = parseDatJ(patj)
+				patch = file.read()
+			edit_data = parseDatJ(patch)
 			
 			# check if compatible
 			if len(edit_data) != len(self.data):
@@ -582,11 +663,8 @@ class Window(QMainWindow):
 			self.updateFilename() # show file changed
 			self.setData(orig_data, edit_data)
 		
-		# import from binj
-		elif type.lower() == '.binj':
-			with open(filename, 'rb') as file:
-				edit_binj = file.read()
-			
+		# import from binj / e file
+		elif type.lower() in ['.binj', '.e']:
 			# check separator
 			if self.info['SEP'] != parseHex(Config.get('SEP', 'E31B')):
 				# different tokens -> ask which one to use
@@ -610,8 +688,14 @@ class Window(QMainWindow):
 					SEP = self.info['SEP']
 				else: return # abort
 			else: SEP = self.info['SEP']
+			
 			try:
-				prefix, edit_data = parseBinJ(edit_binj, SEP)
+				if type.lower() == '.binj':
+					with open(filename, 'rb') as file: edit_bin = file.read()
+					edit_data, extra = parseBinJ(edit_bin, SEP)
+				elif type.lower() == '.e':
+					with GzipFile(filename, 'r') as file: edit_bin = file.read()
+					edit_data, extra = parseE(edit_bin, SEP)
 			except:
 				self.showError(self.tr('error.importFailed'))
 				return
@@ -623,9 +707,24 @@ class Window(QMainWindow):
 				# trim or pad edit data
 				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
 				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
-			if prefix != self.extra['prefix']:
-				# prefixes do not match -> show warning and ask to continue
-				if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+			
+			# check if compatible for binj
+			if self.info['mode'] == 'binJ':
+				if extra['prefix'] != self.extra['prefix']:
+					# prefixes do not match -> show warning and ask to continue
+					if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+			
+			# check if compatible for binj
+			elif self.info['mode'] == 'e':
+				# something does not match -> show warning and ask to continue
+				if extra['prefix'] != self.extra['prefix']:
+					if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+				if extra['header'] != self.extra['header']:
+					if not self.askWarning(self.tr('warning.HeadersDiffer')): return
+				if extra['scripts'] != self.extra['scripts']:
+					if not self.askWarning(self.tr('warning.ScriptsDiffer')): return
+				if extra['links'] != self.extra['links']:
+					if not self.askWarning(self.tr('warning.LinksDiffer')): return
 			
 			# set data
 			orig_data = [bytes for bytes, _, _, _ in self.data]
@@ -634,20 +733,21 @@ class Window(QMainWindow):
 			self.setData(orig_data, edit_data)
 	
 	def exportPatch(self):
-		""" Exports a patch file as a .patJ file. """
-		dir = Config.get('patj-export-dir', None)
+		""" Exports a patch file as a .patJ or .patE file. """
+		dir = Config.get('export-patch-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.splitext(self.info['filename'])[0]
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, self.tr('type.patj'))
+		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.patj'), 'e': self.tr('type.pate')}[self.info['mode']])
 		if not filename: return False
-		Config.set('patj-export-dir', path.dirname(filename))
+		_, type = path.splitext(filename)
+		Config.set('export-patch-dir', path.dirname(filename))
 		
-		# create patj
-		patj = createDatJ([bytes for _, _, bytes, _ in self.data])
+		# create patch
+		patch = createDatJ([bytes for _, _, bytes, _ in self.data])
 		
-		# save patJ
+		# save patJ or patE
 		with open(filename, 'w', encoding = 'ASCII') as file:
-			file.write(patj)
+			file.write(patch)
 		return True
 	
 	## DIALOGS ##
@@ -655,28 +755,16 @@ class Window(QMainWindow):
 	def showAbout(self):
 		""" Displays the about window. """
 		msg = QMessageBox()
-		msg.setIconPixmap(ICON.scaledToWidth(48))
+		msg.setIconPixmap(ICON.scaledToWidth(112))
 		msg.setWindowTitle(self.tr('about.title'))
 		msg.setWindowIcon(QIcon(ICON))
-		text = '<html><body style="text-align: center;"><p>%s %s @ <a href="%s">%s</a></p><p>%s</p></body></html>'
-		msg.setText(text % (self.tr('appname'), VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR))
-		msg.setStandardButtons(QMessageBox.Ok)
-		msg.exec_()
-	
-	def showPrefix(self):
-		""" Displays the about window. """
-		msg = QMessageBox()
-		msg.setWindowTitle(self.tr('appname'))
-		msg.setWindowIcon(QIcon(ICON))
-		prefix = self.extra['prefix']
-		msg.setText(self.tr('prefix.length') % len(prefix))
-		details = ''
-		for i in range(0, len(prefix), 4):
-			if details:
-				if i % 8 == 0: details += linesep
-				else: details += '  '
-			details += createHex(prefix[i:i+4])
-		msg.setDetailedText(details)
+		text = '''<html><body style="text-align: center; font-size: 10pt">
+					<p><b style="font-size: 14pt">%s </b><b>%s</b>
+					<br/>@ <a href="%s">%s</a></p>
+					<p style="text-align: center;">%s</p>
+					<p>%s</p>
+				</body></html>'''
+		msg.setText(text % (self.tr('appname'), VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR, self.tr('about.specialThanks') % SPECIAL_THANKS))
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
@@ -783,7 +871,7 @@ class Window(QMainWindow):
 		if savable is not None: self.flag['savable'] = savable
 		# activate/deactivate save action and from savj
 		self.actionSave.setEnabled(self.flag['savable'])
-		self.actionDecodingTableFromSavJ.setEnabled(self.flag['savable'])
+		self.actionDecodingTableFromSav.setEnabled(self.flag['savable'])
 		# set window title
 		if self.info['filename']:
 			self.setWindowTitle('%s%s - %s' % ('*' if self.flag['changed'] else '', path.basename(self.info['filename']), self.tr('appname')))
@@ -794,7 +882,6 @@ class Window(QMainWindow):
 		self.actionExport.setEnabled(actions_enabled)
 		self.actionApplyPatch.setEnabled(actions_enabled)
 		self.actionCreatePatch.setEnabled(actions_enabled)
-		self.actionShowPrefix.setEnabled(actions_enabled)
 		self.actionFTPClient.setEnabled(actions_enabled)
 	
 	def updateDecodingTable(self, arg):
@@ -806,8 +893,8 @@ class Window(QMainWindow):
 		# save table for later
 		oldTable = self.info['decodingTable']
 		
-		# arg is decoding table from savj -> select from savj
-		if arg is self.actionDecodingTableFromSavJ:
+		# arg is decoding table from save -> select from save
+		if arg is self.actionDecodingTableFromSav:
 			self.menuDecodingTableGroup.actions()[0].setChecked(True)
 			self.info['decodingTable'] = self.cache['decodingTableFromSave']
 		
@@ -1133,12 +1220,16 @@ class Window(QMainWindow):
 	## MISC ##
 	
 	def showFTPClient(self):
-		# create temporary binj file
+		# create temporary binj or e file
 		data = [edit if edit else orig for orig, _, edit, _ in self.data]
-		binj = createBinJ(self.extra['prefix'], data, self.info['SEP'])
-		filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.binJ')
-		with open(filename, 'wb') as file:
-			file.write(binj)
+		if self.info['mode'] == 'binJ':
+			bin = createBinJ(data, self.info['SEP'], self.extra)
+			filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.binJ')
+			with open(filename, 'wb') as file: file.write(bin)
+		elif self.info['mode'] == 'e':
+			bin = createE(data, self.info['SEP'], self.extra)
+			filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.e')
+			with GzipFile(filename, 'w') as file: file.write(bin)
 		
 		# open ftp client and pass the temporary filename
 		dlg = FTPClient(filename)
@@ -1167,6 +1258,11 @@ class FTPClient(QDialog):
 		uiFile.close()
 		
 		self.src_filename = filename
+		name, type = path.splitext(filename)
+		if type.lower() == '.binj': mode = 'Message/binJ'
+		elif type.lower() == '.e' and name.startswith('demo'): mode = 'Demo/e'
+		elif type.lower() == '.e': mode = 'Field/e'
+		else: mode = 'Default'
 		
 		self.setWindowFlags(Qt.WindowCloseButtonHint)
 		self.setFixedSize(480, 340)
@@ -1183,12 +1279,15 @@ class FTPClient(QDialog):
 		self.editPassword.textChanged.connect(lambda value: Config.set('ftp.password', value))
 		
 		# game settings
+		ftp_directory_key = {'Default': 'ftp.directory', 'Message/binJ': 'ftp.directory.message', 'Demo/e': 'ftp.directory.demo', 'Field/e': 'ftp.directory.field'}[mode]
+		ftp_directory_default_value = {'Default': '/data', 'Message/binJ': '/data/Message', 'Demo/e': '/data/Event/Demo', 'Field/e': '/data/Event/Field'}[mode]
+		filename_extension = {'Default': '.binJ', 'Message/binJ': '.binJ', 'Demo/e': '.e', 'Field/e': '.e'}[mode]
 		self.editTitleID.setValidator(QRegExpValidator(QRegExp('[0-9a-fA-F]{16}')))
 		self.editTitleID.setText(Config.get('ftp.titleid') or '0000000000000000')
 		self.editTitleID.textChanged.connect(lambda value: Config.set('ftp.titleid', value.lower()))
-		self.editDirectory.setText(Config.get('ftp.directory', '/data/Message'))
-		self.editDirectory.textChanged.connect(lambda value: Config.set('ftp.directory', value))
-		self.editFilename.setText(path.splitext(path.basename(filename))[0] + '.binJ')
+		self.editDirectory.setText(Config.get(ftp_directory_key, ftp_directory_default_value))
+		self.editDirectory.textChanged.connect(lambda value: Config.set(ftp_directory_key, value))
+		self.editFilename.setText(path.splitext(path.basename(filename))[0] + filename_extension)
 		
 		# remaining ui
 		self.buttonSend.clicked.connect(self.send)
@@ -1204,17 +1303,17 @@ class FTPClient(QDialog):
 		self.show()
 	
 	def retranslateUi(self):
-		self.setWindowTitle(self.tr("Send via FTP..."))
-		self.labelConnection.setText(self.tr("Connection Settings"))
-		self.labelIP.setText(self.tr("3DS IP:"))
-		self.labelPort.setText(self.tr("Port:"))
-		self.labelUser.setText(self.tr("User:"))
-		self.labelPassword.setText(self.tr("Password:"))
-		self.labelGame.setText(self.tr("Game Settings"))
-		self.labelTitleID.setText(self.tr("Title ID:"))
-		self.labelDirectory.setText(self.tr("Directory:"))
-		self.labelFilename.setText(self.tr("Filename:"))
-		self.buttonSend.setText(self.tr("Send"))
+		self.setWindowTitle(self.tr('Send via FTP...'))
+		self.labelConnection.setText(self.tr('Connection Settings'))
+		self.labelIP.setText(self.tr('3DS IP:'))
+		self.labelPort.setText(self.tr('Port:'))
+		self.labelUser.setText(self.tr('User:'))
+		self.labelPassword.setText(self.tr('Password:'))
+		self.labelGame.setText(self.tr('Game Settings'))
+		self.labelTitleID.setText(self.tr('Title ID:'))
+		self.labelDirectory.setText(self.tr('Directory:'))
+		self.labelFilename.setText(self.tr('Filename:'))
+		self.buttonSend.setText(self.tr('Send'))
 	
 	def updateFullPath(self):
 		titleid = self.editTitleID.text().lower()
@@ -1289,6 +1388,7 @@ class FTPClient(QDialog):
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	translator = QTranslator()
+	baseTranslator = QTranslator()
 	ICON = QPixmap(':/Resources/Images/icon.ico')
 	window = Window()
 	window.resizeTable()

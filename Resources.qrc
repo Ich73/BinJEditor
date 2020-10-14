@@ -10,5 +10,9 @@
 	<qresource prefix="Resources/i18n">
 		<file alias="de.qm">Resources/i18n/de.qm</file>
 		<file alias="en.qm">Resources/i18n/en.qm</file>
+		<file alias="es.qm">Resources/i18n/es.qm</file>
+		<file alias="qtbase_de.qm">Resources/i18n/qtbase_de.qm</file>
+		<file alias="qtbase_en.qm">Resources/i18n/qtbase_en.qm</file>
+		<file alias="qtbase_es.qm">Resources/i18n/qtbase_es.qm</file>
 	</qresource>
 </RCC>

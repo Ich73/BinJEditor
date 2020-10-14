@@ -223,13 +223,16 @@ def parseBinJ(binj, SEP):
 			data.append(binj[ptr:next_ptr-len(SEP)])
 		
 		# return prefix and data
-		return (prefix, data)
+		return (data, {'prefix': prefix})
 
-def createBinJ(prefix, data, SEP):
+def createBinJ(data, SEP, extra):
 	""" Creates the bytes data for a binj file given a prefix, the data to include
 		and the separator token to separate the strings.
 	"""
 	def pointer2bytes(ptr): return int.to_bytes(ptr, 4, 'little')
+	
+	# extract prefix
+	prefix = extra['prefix']
 	
 	# add prefix
 	binj = prefix
@@ -250,9 +253,131 @@ def createBinJ(prefix, data, SEP):
 	return binj
 
 
-##################
-## Lists (datJ) ##
-##################
+#######
+## e ##
+#######
+
+def parseE(bin, SEP):
+	""" Parses the bytes data of an e file.
+		Returns the following extra parameters:
+		- prefix: the first four bytes
+		- header: a list of script indices or None values
+		- scripts: a list of (type, length, code) tuples
+		- links: a dictionary from script index to script index
+	"""
+	def bytes2pointer(bytes): return int.from_bytes(bytes, 'little')
+	TEXT_SCRIPTS = [0x43, 0x44, 0x84, 0x85]
+	CODE_SCRIPTS = [0x0409, 0x040A, 0x040C, 0x040E]
+	
+	# collect magic number
+	prefix = bin[:4]
+	
+	# parse scripts (first pass) and data
+	scripts = list() # list of (type, length, code)
+	pointers = dict() # temporary dict of index to pointer for linking code scripts
+	offsets = list() # temporary list of offsets for linking
+	data    = list()
+	i = 0x1004
+	while i < len(bin):
+		offsets.append(i - 0x1004)
+		type   = bytes2pointer(bin[i  :i+4])
+		length = bytes2pointer(bin[i+4:i+8])
+		code   = bin[i+8:i+length]
+		if type in TEXT_SCRIPTS: # text scripts
+			end = code.rfind(SEP) # find separator token
+			if end == -1: end = len(code) # or use whole code
+			data.append(code[:end])
+			scripts.append((type, 0, b''))
+		elif type in CODE_SCRIPTS: # code scripts
+			pointer = bytes2pointer(code[:4])
+			pointers[len(scripts)] = pointer
+			code = b'\x00'*4 + code[4:]
+			scripts.append((type, length, code))
+		else: # other scripts
+			scripts.append((type, length, code))
+		i += length
+	
+	# parse header
+	header = list() # list of script index or None
+	for i in range(0x0004, 0x1004, 4):
+		pointer = bytes2pointer(bin[i:i+4])
+		if pointer == 0xFFFFFFFF:
+			header.append(None)
+			continue
+		index = offsets.index(pointer)
+		header.append(index)
+	
+	# link scripts (second pass)
+	links = dict() # dict from script index to script index
+	for i, (type, _, code) in enumerate(scripts):
+		if type not in CODE_SCRIPTS: continue # code scripts
+		pointer = pointers[i]
+		index   = offsets.index(pointer)
+		links[i] = index
+	
+	# return prefix, header, scripts, links and data
+	return (data, {'prefix': prefix, 'header': header, 'scripts': scripts, 'links': links})
+
+def createE(data, SEP, extra):
+	""" Creates the bytes data for an e file given the data,
+		separator token and extra information.
+	"""
+	def pointer2bytes(ptr): return int.to_bytes(ptr, 4, 'little')
+	
+	# extract prefix, header, scripts and links
+	prefix  = extra['prefix']
+	header  = extra['header']
+	scripts = extra['scripts']
+	links   = extra['links']
+	
+	# add data to scripts
+	dataScripts = list()
+	dataIdx = 0
+	for type, length, code in scripts:
+		if length == 0: # text script, generate code and length
+			if len(data[dataIdx]) == 0: code = b'' # don't add SEP to empty texts
+			else:
+				code = data[dataIdx] + SEP # add data and separator token
+				code += b'\x00' * (-len(code) % 4) # fill with zeros
+			length = len(code) + 8 # plus 8 for type and length
+			dataIdx += 1
+		dataScripts.append((type, length, code))
+	
+	# calculate offsets for linking
+	offsets = list()
+	i = 0
+	for _, length, _ in dataScripts:
+		offsets.append(i)
+		i += length
+	
+	# add magic bytes
+	bin = prefix
+	
+	# add header
+	for index in header:
+		if index is None:
+			bin += b'\xff'*4
+			continue
+		pointer = offsets[index]
+		bin += pointer2bytes(pointer)
+	
+	# add scripts
+	dataIdx = 0
+	for i, (type, length, code) in enumerate(dataScripts):
+		if i in links: # update pointers in code
+			pointer = offsets[links[i]]
+			code = pointer2bytes(pointer) + code[4:]			
+		bin += pointer2bytes(type)
+		bin += pointer2bytes(length)
+		bin += code
+	
+	# return e content
+	return bin
+
+
+###########################
+## Lists of Bytes (datJ) ##
+###########################
 
 def parseDatJ(datj):
 	return [hex2bytes(hex) for hex in datj.splitlines()]
@@ -261,9 +386,9 @@ def createDatJ(data):
 	return '\n'.join([bytes2hex(bin) for bin in data]) + '\n'
 
 
-##################
-## Dicts (tabJ) ##
-##################
+###########################
+## Dicts of Bytes (tabJ) ##
+###########################
 
 def parseTabJ(tabj, hexValue = True):
 	data = dict()
@@ -274,3 +399,52 @@ def parseTabJ(tabj, hexValue = True):
 
 def createTabJ(data, hexValue = True):
 	return '\n'.join('%s;%s' % (bytes2hex(k), bytes2hex(v) if hexValue else v) for k, v in data.items()) + '\n'
+
+
+#########################
+## Lists of Int (datE) ##
+#########################
+
+def parseDatE(date):
+	return [int(s) if len(s) != 0 else None for s in date.splitlines()]
+
+def createDatE(data):
+	return '\n'.join([str(i) if i is not None else '' for i in data]) + '\n'
+
+
+#########################
+## Dicts of Int (tabE) ##
+#########################
+
+def parseTabE(tabe):
+	data = dict()
+	for line in tabe.splitlines():
+		k, v = line.split(';', 1)
+		data[int(k)] = int(v)
+	return data
+
+def createTabE(data):
+	return '\n'.join('%d;%d' % (k, v) for k, v in data.items()) + '\n'
+
+
+############################
+## Lists of Scripts (spt) ##
+############################
+
+def parseSpt(spt):
+	scripts = list()
+	for line in spt.splitlines():
+		type, length, code = line.split(';', 2)
+		scripts.append((int(type), int(length), hex2bytes(code)))
+	return scripts
+
+def createSpt(scripts):
+	spt = ''
+	for type, length, code in scripts:
+		spt += str(type)
+		spt += ';'
+		spt += str(length)
+		spt += ';'
+		spt += bytes2hex(code)
+		spt += '\n'
+	return spt
