@@ -624,7 +624,8 @@ class Window(QMainWindow):
 			with open(filename, 'wb') as file: file.write(bin)
 		elif self.info['mode'] == 'e':
 			bin = createE(data, self.info['SEP'], self.extra)
-			with GzipFile(filename, 'w') as file: file.write(bin)
+			with open(filename, 'wb') as file:
+				with GzipFile(fileobj=file, mode='w', filename='', mtime=0) as gzipFile: gzipFile.write(bin)
 		
 		return True
 	
@@ -1236,7 +1237,8 @@ class Window(QMainWindow):
 		elif self.info['mode'] == 'e':
 			bin = createE(data, self.info['SEP'], self.extra)
 			filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.e')
-			with GzipFile(filename, 'w') as file: file.write(bin)
+			with open(filename, 'wb') as file:
+				with GzipFile(fileobj=file, mode='w', filename='', mtime=0) as gzipFile: gzipFile.write(bin)
 		
 		# open ftp client and pass the temporary filename
 		dlg = FTPClient(filename)
