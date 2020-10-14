@@ -3,37 +3,37 @@
 <context>
     <name>FTPClient</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1363"/>
+        <location filename="../../BinJEditor.pyw" line="1370"/>
         <source>send.connect</source>
         <translation>Connect to `%s:%d`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1366"/>
+        <location filename="../../BinJEditor.pyw" line="1373"/>
         <source>send.login</source>
         <translation>Login as `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1370"/>
+        <location filename="../../BinJEditor.pyw" line="1377"/>
         <source>send.mkd</source>
         <translation>Create directory `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1373"/>
+        <location filename="../../BinJEditor.pyw" line="1380"/>
         <source>send.send</source>
         <translation>Send file `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1375"/>
+        <location filename="../../BinJEditor.pyw" line="1382"/>
         <source>send.quit</source>
         <translation>Disconnect</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1377"/>
+        <location filename="../../BinJEditor.pyw" line="1384"/>
         <source>send.done</source>
         <translation>Finished</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1379"/>
+        <location filename="../../BinJEditor.pyw" line="1386"/>
         <source>send.error</source>
         <translation>**Error:**</translation>
     </message>
@@ -276,7 +276,7 @@
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1210"/>
+        <location filename="../../BinJEditor.pyw" line="1217"/>
         <source>error.unknownChar</source>
         <translation>Unknwon char: &apos;%s&apos;</translation>
     </message>

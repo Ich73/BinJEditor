@@ -3,37 +3,37 @@
 <context>
     <name>FTPClient</name>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1363"/>
+        <location filename="../../BinJEditor.pyw" line="1370"/>
         <source>send.connect</source>
         <translation>Verbinden mit `%s:%d`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1366"/>
+        <location filename="../../BinJEditor.pyw" line="1373"/>
         <source>send.login</source>
         <translation>Einloggen als `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1370"/>
+        <location filename="../../BinJEditor.pyw" line="1377"/>
         <source>send.mkd</source>
         <translation>Erstelle Ordner `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1373"/>
+        <location filename="../../BinJEditor.pyw" line="1380"/>
         <source>send.send</source>
         <translation>Sende Datei `%s`</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1375"/>
+        <location filename="../../BinJEditor.pyw" line="1382"/>
         <source>send.quit</source>
         <translation>Verbindung trennen</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1377"/>
+        <location filename="../../BinJEditor.pyw" line="1384"/>
         <source>send.done</source>
         <translation>Fertig</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1379"/>
+        <location filename="../../BinJEditor.pyw" line="1386"/>
         <source>send.error</source>
         <translation>**Error:**</translation>
     </message>
@@ -276,7 +276,7 @@
         <translation>Fehler</translation>
     </message>
     <message>
-        <location filename="../../BinJEditor.pyw" line="1210"/>
+        <location filename="../../BinJEditor.pyw" line="1217"/>
         <source>error.unknownChar</source>
         <translation>Unbekanntes Zeichen: &apos;%s&apos;</translation>
     </message>

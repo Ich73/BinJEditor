@@ -1,6 +1,6 @@
 """ Author: Dominik Beese
 >>> BinJ Editor
-	An editor for .binJ files with custom decoding tables.
+	An editor for .binJ and .e files with custom decoding tables.
 <<<
 """
 
@@ -1098,6 +1098,7 @@ class Window(QMainWindow):
 				content = [x.split('\t')[index] for x in content] # use corresponding column only
 			
 			# paste
+			self.table.setSortingEnabled(False)
 			for i, (r, c) in enumerate(indices):
 				if len(content) == 1: text = content[0] # always use single line
 				elif i < len(content): text = content[i] # use next line
@@ -1134,6 +1135,8 @@ class Window(QMainWindow):
 				list_cell.setList(lst)
 				self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
 				self.flag['editing'] = False
+			self.table.setSortingEnabled(True)
+			return
 		
 		# Ctrl+X -> cut
 		if {Qt.Key_Control, Qt.Key_X} == keys:
@@ -1146,6 +1149,7 @@ class Window(QMainWindow):
 			
 			# create copy string and clear data
 			s = ''
+			self.table.setSortingEnabled(False)
 			for r in rows:
 				# copy
 				if s != '': s += linesep # go to next row
@@ -1162,6 +1166,7 @@ class Window(QMainWindow):
 				self.table.item(r, 4).setList(list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
 				self.flag['editing'] = False
+			self.table.setSortingEnabled(True)
 			
 			# copy to clipboard
 			clipboard.copy(s)
@@ -1174,6 +1179,7 @@ class Window(QMainWindow):
 			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
 			rows = {r for r, _ in indices} # collect rows
 			
+			self.table.setSortingEnabled(False)
 			for r in sorted(rows):
 				id = self.table.item(r, 0).int - 1 # logical row
 				self.flag['editing'] = True
@@ -1182,6 +1188,7 @@ class Window(QMainWindow):
 				self.table.item(r, 4).setList(list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
 				self.flag['editing'] = False
+			self.table.setSortingEnabled(True)
 			return
 		
 		# Return/Enter -> next cell
