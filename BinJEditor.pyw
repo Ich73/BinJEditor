@@ -63,7 +63,11 @@ class Config:
 	
 	def get(key, default = None):
 		Config.loadConfig()
-		return Config.cfg.get(key, default)
+		value = Config.cfg.get(key)
+		if value is None:
+			Config.set(key, default)
+			return default
+		return value
 	
 	def set(key, value):
 		Config.cfg[key] = value
