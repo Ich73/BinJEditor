@@ -26,13 +26,13 @@ Addionally you need `lrelease`, a Qt tool for converting `.ts` translation files
 ### Compiling Resources
 To convert the translation files and pack them with the other resources into a single `Resources.py` file, you can run the following commands. This is needed whenever you change any resource file.
 ```
-pylupdate5 BinJEditor.pyw -ts -noobsolete Resources/i18n/de.ts
+pylupdate5 BinJEditor.pyw Resources/Forms/window.ui Resources/Forms/ftpclient.ui Resources/Forms/searchdlg.ui -ts -noobsolete Resources/i18n/de.ts
 lrelease Resources/i18n/de.ts
 
-pylupdate5 BinJEditor.pyw -ts -noobsolete Resources/i18n/en.ts
+pylupdate5 BinJEditor.pyw Resources/Forms/window.ui Resources/Forms/ftpclient.ui Resources/Forms/searchdlg.ui -ts -noobsolete Resources/i18n/en.ts
 lrelease Resources/i18n/en.ts
 
-pylupdate5 BinJEditor.pyw -ts -noobsolete Resources/i18n/es.ts
+pylupdate5 BinJEditor.pyw Resources/Forms/window.ui Resources/Forms/ftpclient.ui Resources/Forms/searchdlg.ui -ts -noobsolete Resources/i18n/es.ts
 lrelease Resources/i18n/es.ts
 
 lrelease Resources/i18n/qtbase_de.ts
