@@ -171,7 +171,7 @@ class Window(QMainWindow):
 			'filename':      None, # the name of the currently loaded file
 			'mode':          None, # the current mode ('binJ' or 'e')
 			'decodingTable': None, # the current decoding table
-			'SEP':           None, # the current separator token
+			'SEP':  parseHex(Config.get('SEP', 'E31B')), # the current separator token
 		}
 		self.flag = {
 			'changed': False, # whether the loaded data was edited
@@ -189,6 +189,9 @@ class Window(QMainWindow):
 			# 'prefix': None, # the prefix bytes
 		}
 		
+		# dialogs
+		self.dialogs = list()
+		
 		# menu
 		self.actionOpen.triggered.connect(self.openFile)
 		self.actionSave.triggered.connect(self.saveFile)
@@ -200,9 +203,14 @@ class Window(QMainWindow):
 		self.actionSeparatorToken.triggered.connect(self.editSeparatorToken)
 		
 		self.actionHideEmptyTexts.setChecked(Config.get('hide-empty-texts', True))
+		self.actionHideEmptyTexts.triggered.connect(lambda value: Config.set('hide-empty-texts', value))
 		self.actionHideEmptyTexts.triggered.connect(self.filterData)
+		self.actionScaleRowsToContents.setChecked(Config.get('scale-rows-to-contents', True))
+		self.actionScaleRowsToContents.triggered.connect(lambda value: Config.set('scale-rows-to-contents', value))
+		self.actionScaleRowsToContents.triggered.connect(self.resizeTable)
 		
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
+		self.actionSearchDlg.triggered.connect(self.showSearchDlg)
 		
 		self.actionAbout.triggered.connect(self.showAbout)
 		self.actionCheckForUpdates.triggered.connect(lambda: self.checkUpdates(True))
@@ -225,7 +233,11 @@ class Window(QMainWindow):
 		self.menuLanguageGroup.addAction(self.actionGerman)
 		self.menuLanguageGroup.addAction(self.actionEnglish)
 		self.menuLanguageGroup.addAction(self.actionSpanish)
-		self.menuLanguageGroup.triggered.connect(self.retranslateUi)
+		def retranslateUi(language):
+			self.retranslateUi(language)
+			for dlg in self.dialogs:
+				dlg.retranslateUi()
+		self.menuLanguageGroup.triggered.connect(retranslateUi)
 		
 		# filter
 		self.editFilter.setFixedWidth(280)
@@ -282,13 +294,15 @@ class Window(QMainWindow):
 		self.actionExport.setText(self.tr('Export...'))
 		self.actionSave.setText(self.tr('Save'))
 		self.actionSaveAs.setText(self.tr('Save As...'))
-		self.actionCreatePatch.setText(self.tr('Create patch...'))
-		self.actionApplyPatch.setText(self.tr('Apply patch...'))
-		self.actionHideEmptyTexts.setText(self.tr('Hide empty texts'))
+		self.actionApplyPatch.setText(self.tr('Apply Patch...'))
+		self.actionCreatePatch.setText(self.tr('Create Patch...'))
+		self.actionHideEmptyTexts.setText(self.tr('Hide Empty Texts'))
+		self.actionScaleRowsToContents.setText(self.tr('Scale Rows to Contents'))
 		self.actionDecodingTableFromSav.setText(self.tr('Table from Save'))
 		self.actionSeparatorToken.setText(self.tr('Separator Token...'))
 		self.actionFTPClient.setText(self.tr('Send via FTP...'))
-		self.actionNoDecodingTable.setText(self.tr('No table'))
+		self.actionSearchDlg.setText(self.tr('Search in Files...'))
+		self.actionNoDecodingTable.setText(self.tr('No Table'))
 	
 	def keyPressEvent(self, event):
 		""" Custom key press event. """
@@ -312,6 +326,9 @@ class Window(QMainWindow):
 		if self.flag['changed']:
 			# ask to save and abort closing if did not save or cancel
 			if not self.askSaveWarning(self.tr('warning.saveBeforeClosing')): event.ignore()
+		# close all dialogs
+		for dlg in self.dialogs:
+			dlg.close()
 	
 	## UPDATES ##
 	
@@ -575,7 +592,7 @@ class Window(QMainWindow):
 		Config.set('import-file-dir', path.dirname(filename))
 		self.updateFilename(filename, False)
 		
-		# load sep from config
+		# load SEP from config
 		self.info['SEP'] = parseHex(Config.get('SEP', 'E31B'))
 		
 		# update decoding table
@@ -941,12 +958,19 @@ class Window(QMainWindow):
 		""" Resizes the table.
 			The columns are distributed equally.
 		"""
+		# resize columns
 		number_width = 40
 		scrollbar_width = 20
 		self.table.setColumnWidth(0, number_width)
 		column_width = int((self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width) / 4)
 		for i in range(1, 5):
 			self.table.setColumnWidth(i, column_width)
+		
+		# resize rows
+		if self.actionScaleRowsToContents.isChecked():
+			self.table.resizeRowsToContents()
+		else:
+			self.table.verticalHeader().setDefaultSectionSize(self.table.verticalHeader().defaultSectionSize())
 	
 	## DATA ##
 	
@@ -1009,7 +1033,6 @@ class Window(QMainWindow):
 		""" Filters the data. Does not search the index. """
 		filter = self.editFilter.text()
 		hideEmpty = self.actionHideEmptyTexts.isChecked()
-		if hideEmpty != Config.get('hide-empty-texts', True): Config.set('hide-empty-texts', hideEmpty)
 		
 		for row in range(self.table.rowCount()):
 			visible = True
@@ -1242,11 +1265,18 @@ class Window(QMainWindow):
 		
 		# open ftp client and pass the temporary filename
 		dlg = FTPClient(filename)
+		self.dialogs.append(dlg)
 		dlg.exec_()
 		
 		# delete temporary binj file
 		os.remove(filename)
-		pass
+		self.dialogs.remove(dlg)
+	
+	def showSearchDlg(self):
+		dlg = SearchDlg(self.info['SEP'])
+		self.dialogs.append(dlg)
+		dlg.exec_()
+		self.dialogs.remove(dlg)
 
 
 ################
@@ -1269,7 +1299,7 @@ class FTPClient(QDialog):
 		self.src_filename = filename
 		name, type = path.splitext(filename)
 		if type.lower() == '.binj': mode = 'Message/binJ'
-		elif type.lower() == '.e' and name.startswith('demo'): mode = 'Demo/e'
+		elif type.lower() == '.e' and path.basename(name).startswith('demo'): mode = 'Demo/e'
 		elif type.lower() == '.e': mode = 'Field/e'
 		else: mode = 'Default'
 		
@@ -1388,6 +1418,261 @@ class FTPClient(QDialog):
 			log(self.tr('send.error') + ' ```%s```' % str(e))
 		
 		setAllElementsEnabled(True)
+
+
+################
+## Search Dlg ##
+################
+
+class SearchDlg(QDialog):
+	""" The dialog for searching texts in files. """
+	
+	def __init__(self, SEP):
+		super(SearchDlg, self).__init__()
+		uiFile = QFile(':/Resources/Forms/searchdlg.ui')
+		uiFile.open(QFile.ReadOnly)
+		loadUi(uiFile, self)
+		uiFile.close()
+		
+		self.setWindowFlags(Qt.WindowCloseButtonHint)
+		self.SEP = SEP
+		
+		# search button
+		self.searching = False
+		self.buttonSearch.clicked.connect(lambda: self.toggleSearch())
+		self.toggleSearch(False)
+		
+		# search for
+		for item in Config.get('search.for.history', list()): self.cbSearchFor.addItem(item)
+		self.cbSearchFor.setEditText(Config.get('search.for', ''))
+		self.cbSearchFor.editTextChanged.connect(lambda value: Config.set('search.for', value))
+		# search settings
+		self.useRegex.setChecked(Config.get('search.regex', False))
+		self.useRegex.stateChanged.connect(lambda value: Config.set('search.regex', value))
+		self.editDirectory.setText(Config.get('search.directory', str(path.abspath('.'))))
+		self.editDirectory.textChanged.connect(lambda value: Config.set('search.directory', value))
+		self.buttonChooseDirectory.clicked.connect(self.askDirectory)
+		self.buttonChooseDirectory.setFixedWidth(22)
+		# files
+		self.updateCBFiles()
+		# decoding tables
+		for file in [f for f in os.listdir(TABLE_PATH) if path.splitext(f)[1] == '.txt']:
+			file = path.join(TABLE_PATH, file)
+			self.cbDecodingTable.addItem(path.basename(file), userData = file)
+		idx = self.cbDecodingTable.findText(Config.get('search.table', ''))
+		self.cbDecodingTable.setCurrentIndex(idx if idx != -1 else 0)
+		self.cbDecodingTable.currentTextChanged.connect(lambda value: Config.set('search.table', value))
+		
+		self.retranslateUi()
+		self.setWindowIcon(QIcon(ICON))
+		self.show()
+		self.resizeTable()
+	
+	def retranslateUi(self):
+		self.setWindowTitle(self.tr('Search in Files...'))
+		self.labelSettings.setText(self.tr('Search Settings'))
+		self.labelSearchFor.setText(self.tr('Search for:'))
+		self.useRegex.setText(self.tr('Regex'))
+		self.labelDirectory.setText(self.tr('Directory:'))
+		self.labelFiles.setText(self.tr('Files:'))
+		self.labelDecodingTable.setText(self.tr('Table:'))
+		self.buttonSearch.setText(self.tr('Search'))
+		self.table.setHorizontalHeaderLabels([self.tr('file'), self.tr('line'), self.tr('text')])
+		self.table.setSortingEnabled(True)
+		self.updateCBFiles()
+	
+	def resizeEvent(self, newSize):
+		self.resizeTable()
+	
+	def resizeTable(self):
+		scrollbar_width = 20
+		number_width = 40
+		self.table.setColumnWidth(1, number_width)
+		remaining_width = int(self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width)
+		file_width = int(remaining_width * 0.3)
+		self.table.setColumnWidth(0, file_width)
+		self.table.setColumnWidth(2, remaining_width - file_width)
+	
+	def showError(self, text, detailedText = None):
+		""" Displays an error message. """
+		msg = QMessageBox()
+		msg.setIcon(QMessageBox.Critical)
+		msg.setWindowTitle(self.tr('error'))
+		msg.setWindowIcon(QIcon(ICON))
+		msg.setText(text)
+		if detailedText: msg.setDetailedText(detailedText)
+		msg.setStandardButtons(QMessageBox.Ok)
+		msg.exec_()
+	
+	def updateCBFiles(self):
+		""" Adds the items for supported file types to the combo box.
+			Retranslates the strings if called a second time.
+		"""
+		if self.cbFiles.count() > 0: # clear if called to translate
+			self.cbFiles.currentIndexChanged.disconnect()
+			self.cbFiles.clear()
+		self.cbFiles.addItem(self.tr('type.binj_e_savj_save_patj_pate'), userData = ('.binJ', '.e', '.savJ', '.savE', '.patJ', '.patE'))
+		self.cbFiles.addItem(self.tr('type.binj_e'), userData = ('.binJ', '.e'))
+		self.cbFiles.addItem(self.tr('type.binj'), userData = ('.binJ',))
+		self.cbFiles.addItem(self.tr('type.e'), userData = ('.e',))
+		self.cbFiles.addItem(self.tr('type.savj_save'), userData = ('.savJ', '.savE'))
+		self.cbFiles.addItem(self.tr('type.savj'), userData = ('.savJ',))
+		self.cbFiles.addItem(self.tr('type.save'), userData = ('.savE',))
+		self.cbFiles.addItem(self.tr('type.patj_pate'), userData = ('.patJ', '.patE'))
+		self.cbFiles.addItem(self.tr('type.patj'), userData = ('.patJ',))
+		self.cbFiles.addItem(self.tr('type.pate'), userData = ('.patE',))
+		idx = Config.get('search.files', 0)
+		self.cbFiles.setCurrentIndex(idx if idx < self.cbFiles.count() else 0)
+		self.cbFiles.currentIndexChanged.connect(lambda value: Config.set('search.files', value))
+	
+	def askDirectory(self):
+		""" Ask to choose a directory and updates editDirectory. """
+		dir = QFileDialog.getExistingDirectory(self, self.tr('chooseDirectory'), self.editDirectory.text())
+		if not dir: return
+		self.editDirectory.setText(dir)
+	
+	def toggleSearch(self, flag = None):
+		""" Updates the self.searching flag and the enabled states of all elements.
+			Starts the search.
+		"""
+		# set self.searching
+		if flag is None: self.searching = not self.searching
+		else: self.searching = flag
+		# update button text
+		self.buttonSearch.setText(self.tr('Search') if not self.searching else self.tr('Cancel'))
+		# update enabled
+		self.progressBar.setEnabled(self.searching)
+		self.cbSearchFor.setEnabled(not self.searching)
+		self.useRegex.setEnabled(not self.searching)
+		self.editDirectory.setEnabled(not self.searching)
+		self.buttonChooseDirectory.setEnabled(not self.searching)
+		self.cbFiles.setEnabled(not self.searching)
+		self.cbDecodingTable.setEnabled(not self.searching)
+		# start search
+		if self.searching: self.startSearch()
+	
+	def startSearch(self):
+		""" Searches the specified files. """
+		# parse parameters
+		searchString = self.cbSearchFor.currentText()
+		useRegex = self.useRegex.isChecked()
+		directory = self.editDirectory.text()
+		fileTypes = self.cbFiles.currentData()
+		decodingTable = self.cbDecodingTable.currentData()
+		
+		# prepare and check parameters
+		self.table.setRowCount(0)
+		if not path.isdir(directory):
+			self.showError(self.tr('error.notADirectory'))
+			self.toggleSearch(False)
+			return
+		if useRegex:
+			try:
+				pattern = re.compile(searchString)
+			except Exception as e:
+				self.showError(self.tr('error.invalidRegex'), str(e))
+				self.toggleSearch(False)
+				return
+		decodingTable = parseDecodingTable(decodingTable)
+		
+		# update search for history
+		history = Config.get('search.for.history', list())
+		text = self.cbSearchFor.currentText()
+		if not history or history[0] != text: # add to history
+			history = [text] + history
+			self.cbSearchFor.insertItem(0, text)
+		history = history[:10] # limit to 10 entries
+		Config.set('search.for.history', history)
+		
+		# collect all files, idle animation
+		self.progressBar.setMaximum(0)
+		QApplication.processEvents()
+		filenames = list()
+		for dp, _, fn in os.walk(directory):
+			filenames += [path.join(dp, f) for f in fn if path.splitext(f)[1] in fileTypes]
+			QApplication.processEvents()
+		if len(filenames) == 0: # end if no files found
+			self.progressBar.setMaximum(1)
+			self.progressBar.setValue(1)
+			self.toggleSearch(False)
+			return
+		self.progressBar.setMaximum(len(filenames))
+		self.progressBar.setValue(0)
+		
+		# search files
+		for ctr, filename in enumerate(filenames):
+			if not self.searching: return
+			
+			# extract data
+			type = path.splitext(filename)[1]
+			if type == '.binJ':
+				with open(filename, 'rb') as file: bin = file.read()
+				data, _ = parseBinJ(bin, self.SEP)
+				data = [data]
+			elif type == '.e':
+				with GzipFile(filename, 'r') as file: bin = file.read()
+				data, _ = parseE(bin, self.SEP)
+				data = [data]
+			elif type in ['.savJ', '.savE']:
+				with ZipFile(filename, 'r') as zip:
+					origj = zip.read('orig.datJ').decode('ASCII')
+					editj = zip.read('edit.datJ').decode('ASCII')
+				orig_data = parseDatJ(origj)
+				edit_data = parseDatJ(editj)
+				data = [orig_data, edit_data]
+			elif type in ['.patJ', '.patE']:
+				with open(filename, 'r', encoding = 'ASCII') as file: patch = file.read()
+				data = parseDatJ(patch)
+				data = [data]
+			else: continue
+			
+			# iterate over multiple data lists if necessary
+			for lines in data:
+				
+				# convert bytes to text
+				texts = list()
+				for line in lines:
+					texts.append(list2text(bytes2list(line, decodingTable, self.SEP)))
+					QApplication.processEvents()
+				
+				# search texts
+				wasUpdated = False
+				for i, line in enumerate(texts):
+					if useRegex:
+						if not pattern.search(line): continue
+					else:
+						if searchString not in line: continue
+					wasUpdated = True
+					
+					# add row
+					row = self.table.rowCount()
+					self.table.insertRow(row)
+					# file
+					common_prefix = path.commonprefix((filename, directory))
+					file = path.relpath(filename, common_prefix)
+					item = QTableWidgetItem(file)
+					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+					self.table.setItem(row, 0, item)
+					# line
+					item = IntTableWidgetItem(i+1)
+					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+					self.table.setItem(row, 1, item)
+					# text
+					item = QTableWidgetItem(line)
+					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+					self.table.setItem(row, 2, item)
+			
+			# resize table
+			if wasUpdated:
+				self.resizeTable()
+				QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
+			
+			# update progress bar
+			self.progressBar.setValue(ctr+1)
+			QApplication.processEvents()
+		
+		# complete search
+		self.toggleSearch(False)
 
 
 ##########

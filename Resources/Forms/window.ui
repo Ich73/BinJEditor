@@ -181,12 +181,14 @@
      <string>View</string>
     </property>
     <addaction name="actionHideEmptyTexts"/>
+    <addaction name="actionScaleRowsToContents"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
      <string>Tools</string>
     </property>
     <addaction name="actionFTPClient"/>
+    <addaction name="actionSearchDlg"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
@@ -272,7 +274,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Create patch...</string>
+    <string>Create Patch...</string>
    </property>
   </action>
   <action name="actionApplyPatch">
@@ -280,7 +282,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Apply patch...</string>
+    <string>Apply Patch...</string>
    </property>
   </action>
   <action name="actionHideEmptyTexts">
@@ -291,15 +293,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Hide empty texts</string>
-   </property>
-  </action>
-  <action name="actionShowPrefix">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>Show prefix...</string>
+    <string>Hide Empty Texts</string>
    </property>
   </action>
   <action name="actionDecodingTableFromSav">
@@ -334,7 +328,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>No table</string>
+    <string>No Table</string>
    </property>
   </action>
   <action name="actionEnglish">
@@ -364,6 +358,25 @@
    </property>
    <property name="text">
     <string notr="true">Español</string>
+   </property>
+  </action>
+  <action name="actionSearchDlg">
+   <property name="text">
+    <string>Search in Files...</string>
+   </property>
+   <property name="shortcut">
+    <string notr="true">F3</string>
+   </property>
+  </action>
+  <action name="actionScaleRowsToContents">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Scale Rows to Contents</string>
    </property>
   </action>
  </widget>
