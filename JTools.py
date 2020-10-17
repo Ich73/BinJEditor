@@ -266,7 +266,7 @@ def parseE(bin, SEP):
 		- links: a dictionary from script index to script index
 	"""
 	def bytes2pointer(bytes): return int.from_bytes(bytes, 'little')
-	TEXT_SCRIPTS = [0x43, 0x44, 0x84, 0x85]
+	TEXT_SCRIPTS = [0x43, 0x44, 0x59, 0x5A, 0x84, 0x85]
 	CODE_SCRIPTS = [0x0409, 0x040A, 0x040C, 0x040E]
 	
 	# collect magic number
