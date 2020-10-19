@@ -516,7 +516,7 @@
     <message>
         <location filename="../Forms/window.ui" line="307"/>
         <source>Table from Save</source>
-        <translation>Tabla de save</translation>
+        <translation>Tabla de guardado</translation>
     </message>
     <message>
         <location filename="../Forms/window.ui" line="331"/>
