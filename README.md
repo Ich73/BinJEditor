@@ -1,3 +1,6 @@
+[![](https://img.shields.io/github/v/release/Ich73/BinJEditor?include_prereleases&label=Release)](https://github.com/Ich73/BinJEditor/releases/latest)
+[![](https://img.shields.io/github/downloads/Ich73/BinJEditor/total?label=Downloads)](https://github.com/Ich73/BinJEditor/releases)
+[![](https://img.shields.io/github/license/Ich73/BinJEditor?label=License)](https://github.com/Ich73/BinJEditor/blob/master/LICENSE)
 # BinJ Editor
 BinJ Editor lets you import, edit, save, share and export translations for games using the `.binJ` and `.e` formats to store messages. Those games include _Dragon Quest Monsters: Terry's Wonderland 3D_ and _Dragon Quest Monsters 2: Cobi and Tara's Marvelous Mysterious Key_.
 
