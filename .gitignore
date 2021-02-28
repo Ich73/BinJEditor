@@ -7,6 +7,7 @@
 !/.gitignore
 !/LICENSE
 !/README
+!/requirements.txt
 !/BinJEditor.pyw
 !/BinJEditor-OneFile.spec
 !/BinJEditor-OneFolder.spec
