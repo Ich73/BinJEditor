@@ -30,7 +30,7 @@ TABLE_FOLDER = 'Table'
 CONFIG_FILENAME = 'config.json'
 
 APPNAME = 'BinJ Editor'
-VERSION = 'v2.0.0'
+VERSION = 'v2.1.0'
 REPOSITORY = r'Ich73/BinJEditor'
 AUTHOR = 'Dominik Beese 2020-2021'
 SPECIAL_THANKS = 'Frank Colmines'
