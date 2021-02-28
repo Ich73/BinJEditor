@@ -8,7 +8,9 @@ BinJ Editor lets you import, edit, save, share and export translations for games
 
 
 ## Using BinJ Editor
-You can download the newest version as an executable from the [Release Page](https://github.com/Ich73/BinJEditor/releases/latest). Extract the archive and run `BinJEditor.exe`.  
+You can download the newest version from the [Release Page](https://github.com/Ich73/BinJEditor/releases/latest). There are two downloads:
+  * `BinJEditor-Standalone.zip`: Extract the archive to a directory of your choice and run `BinJEditor.exe`.
+  * `BinJEditor-Installer.zip`: Extract the archive and run `BinJEditor-Installer.exe` in order to install BinJ Editor on your PC. You can then start it from the start menu. File associations will be registered for `.savJ`, `.savE`, `.binJ` and `.e` files.
   
 To import a file choose `File > Import...` and select the file. This process may take a few seconds. Now you can start editing the file by entering text into the last column. When you finished editing you can save a project file by choosing `File > Save As...` or export an edited `.binJ` or `.e` file by choosing `File > Export...`.
   
@@ -49,4 +51,6 @@ pyrcc5 Resources.qrc -o Resources.py
 You can run the program by using the command `python BinJEditor.pyw`.
 
 ### Distributing
-To pack the program into a single executable file, [pyinstaller](http://www.pyinstaller.org/) is needed. Simply run the command `pyinstaller BinJEditor.spec --noconfirm` and the executable will be created in the `dist` folder.
+To pack the program into a single executable file, [pyinstaller](http://www.pyinstaller.org/) is needed.  
+Run the command `pyinstaller BinJEditor-OneFile.spec --noconfirm` and the executable will be created in the `dist` folder.  
+Run the command `pyinstaller BinJEditor-OneFolder.spec --noconfirm` and the program files will be created in the `dist/bin` folder.

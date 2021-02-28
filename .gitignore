@@ -8,6 +8,7 @@
 !/LICENSE
 !/README
 !/BinJEditor.pyw
-!/BinJEditor.spec
+!/BinJEditor-OneFile.spec
+!/BinJEditor-OneFolder.spec
 !/JTools.py
 !/Resources.qrc
