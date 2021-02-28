@@ -7,9 +7,9 @@
 # pip install pyqt5
 # pip install pyperclip
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QInputDialog, QDialog, QMessageBox, QAbstractItemView, QTableWidgetItem, QPushButton, QActionGroup
-from PyQt5.QtCore import QTranslator, QLocale, QRegExp, QTimer, QFile, Qt
-from PyQt5.QtGui import QRegExpValidator, QIntValidator, QPixmap, QIcon, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QInputDialog, QDialog, QMessageBox, QAbstractItemView, QTableWidgetItem, QPushButton, QActionGroup, QAction, QItemDelegate, QPlainTextEdit, QStyle
+from PyQt5.QtCore import QTranslator, QLocale, QRegExp, QTimer, QFile, QEvent, Qt
+from PyQt5.QtGui import QRegExpValidator, QIntValidator, QPixmap, QIcon, QFont, QTextCursor
 from JTools import *
 import Resources
 import pyperclip as clipboard
@@ -18,6 +18,7 @@ import re
 import sys
 import os
 from os import path, linesep
+from shutil import copyfile
 from zipfile import ZipFile
 from gzip import GzipFile
 from tempfile import gettempdir as tempdir
@@ -25,12 +26,13 @@ from ftplib import FTP
 import webbrowser
 from urllib.request import urlopen
 
-TABLE_PATH = 'Table/'
-CONFIG_FILE = 'config.json'
+TABLE_FOLDER = 'Table'
+CONFIG_FILENAME = 'config.json'
 
+APPNAME = 'BinJ Editor'
 VERSION = 'v2.0.0'
 REPOSITORY = r'Ich73/BinJEditor'
-AUTHOR = 'Dominik Beese 2020'
+AUTHOR = 'Dominik Beese 2020-2021'
 SPECIAL_THANKS = 'Frank Colmines'
 
 
@@ -38,10 +40,34 @@ SPECIAL_THANKS = 'Frank Colmines'
 ## Setup ##
 ###########
 
+# set paths
+ROOT = path.dirname(path.realpath(sys.argv[0]))
+TABLE_PATH = path.join(ROOT, TABLE_FOLDER)
+CONFIG_FILE = path.join(ROOT, CONFIG_FILENAME)
+try:
+	# write and delete test file to check permissions
+	temp = path.join(ROOT, 'temp')
+	with open(temp, 'wb') as file: file.write(b'\x00')
+	os.remove(temp)
+except PermissionError:
+	# use user path and appdata instead
+	ROOT = path.expanduser('~') # user path
+	DATA = path.join(os.getenv('APPDATA'), APPNAME) # appdata
+	OLD_TABLE_PATH = TABLE_PATH
+	TABLE_PATH = path.join(DATA, TABLE_FOLDER)
+	CONFIG_FILE = path.join(DATA, CONFIG_FILENAME)
+	if not path.exists(TABLE_PATH): os.makedirs(TABLE_PATH)
+	# copy tables from executable path to appdata
+	for table in os.listdir(OLD_TABLE_PATH):
+		old_table = path.join(OLD_TABLE_PATH, table)
+		new_table = path.join(TABLE_PATH, table)
+		if not path.exists(new_table) or path.getmtime(old_table) > path.getmtime(new_table):
+			copyfile(old_table, new_table)
+
 # set windows taskbar icon
 try:
 	from PyQt5.QtWinExtras import QtWin
-	appid = 'binjeditor.' + VERSION
+	appid = APPNAME.replace(' ', '').lower() + '.' + VERSION
 	QtWin.setCurrentProcessExplicitAppUserModelID(appid)
 except: pass
 
@@ -54,8 +80,11 @@ class Config:
 		if not path.exists(CONFIG_FILE):
 			Config.cfg = dict()
 			return
-		with open(CONFIG_FILE, 'r') as file:
-			Config.cfg = json.load(file)
+		try:
+			with open(CONFIG_FILE, 'r') as file:
+				Config.cfg = json.load(file)
+		except:
+			Config.cfg = dict()
 	
 	def saveConfig():
 		with open(CONFIG_FILE, 'w') as file:
@@ -87,70 +116,123 @@ def parseHex(s):
 	s = ''.join(c for c in s if c in set('0123456789ABCDEFabcdef'))
 	return bytes([int(s[i:i+2], 16) for i in range(0, len(s), 2)])
 
-class IntTableWidgetItem(QTableWidgetItem):
+class DataTableWidgetItem(QTableWidgetItem):
+	""" A QTableWidgetItem with a data attribute.
+		Qt.EditRole & Qt.DisplayRole -> text
+		Qt.UserRole -> data
+	"""
+	def data2text(self, data): pass
+	def text2data(self, text): pass
+	def dataLt(self, dataA, dataB): pass
+	def __init__(self, data):
+		super(DataTableWidgetItem, self).__init__(self.data2text(data))
+		self._data = data
+	def __lt__(self, other):
+		if isinstance(other, QTableWidgetItem):
+			return self.dataLt(self._data, other._data)
+		return super(DataTableWidgetItem, self).__lt__(other)
+	def setData(self, role = Qt.UserRole, data = None):
+		if role in [Qt.EditRole, Qt.DisplayRole]:
+			self._data = self.text2data(data)
+			data = self.data2text(self._data)
+		elif role == Qt.UserRole:
+			self._data = data
+			data = self.data2text(self._data)
+		super(DataTableWidgetItem, self).setData(role, data)
+	def data(self, role = Qt.UserRole):
+		if role in [Qt.EditRole, Qt.DisplayRole]: return self.data2text(self._data)
+		elif role == Qt.UserRole: return self._data
+		return None
+
+class IntTableWidgetItem(DataTableWidgetItem):
 	""" A QTableWidgetItem with an int value.
 		Overrides the __lt__ method for int instead of string value comparison.
 	"""
-	def __init__(self, int):
-		super(IntTableWidgetItem, self).__init__(str(int))
-		self.int = int
-	def __lt__(self, other):
-		if isinstance(other, QTableWidgetItem):
-			return self.int < other.int
-		return super(IntTableWidgetItem, self).__lt__(other)
-	def setInt(self, int):
-		self.int = int
-		self.setText(str(int))
-	def setData(self, role, value):
-		if role == Qt.EditRole:
-			self.int = int(value)
-			super(IntTableWidgetItem, self).setData(role, str(self.int))
-		else: super(IntTableWidgetItem, self).setData(role, value)
+	def data2text(self, data):
+		return str(data)
+	def text2data(self, text):
+		return int(text)
+	def dataLt(self, dataA, dataB):
+		return dataA < dataB
 
-class HexBytesTableWidgetItem(QTableWidgetItem):
+class HexBytesTableWidgetItem(DataTableWidgetItem):
 	""" A QTableWidgetItem for bytes representing a hex value.
 		Overrides the __lt__ value comparison.
 	"""
-	def __init__(self, bytes):
-		super(HexBytesTableWidgetItem, self).__init__(createHex(bytes))
-		self.bytes = bytes
-	def __lt__(self, other):
-		if isinstance(other, HexBytesTableWidgetItem):
-			if not self.bytes and other.bytes: return False
-			if self.bytes and not other.bytes: return True
-			if len(self.bytes) != len(other.bytes): return len(self.bytes) < len(other.bytes)
-			return self.bytes < other.bytes
-		return super(HexBytesTableWidgetItem, self).__lt__(other)
-	def setBytes(self, bytes):
-		self.bytes = bytes
-		self.setText(createHex(bytes))
-	def setData(self, role, value):
-		if role == Qt.EditRole:
-			self.bytes = parseHex(value)
-			super(HexBytesTableWidgetItem, self).setData(role, createHex(self.bytes))
-		else: super(HexBytesTableWidgetItem, self).setData(role, value)
+	def data2text(self, data):
+		return createHex(data)
+	def text2data(self, text):
+		return parseHex(text)
+	def dataLt(self, dataA, dataB):
+		if not dataA and dataB: return False
+		if dataA and not dataB: return True
+		if len(dataA) != len(dataB): return len(dataA) < len(dataB)
+		return dataA < dataB
 
-class ListTableWidgetItem(QTableWidgetItem):
+class ListTableWidgetItem(DataTableWidgetItem):
 	""" A QTableWidgetItem for a special list representing a text value.
 		Overrides the __lt__ value comparison.
 	"""
-	def __init__(self, lst):
-		super(ListTableWidgetItem, self).__init__(list2text(lst))
-		self.lst = lst
-	def __lt__(self, other):
-		if isinstance(other, ListTableWidgetItem):
-			if not self.lst and other.lst: return False
-			if self.lst and not other.lst: return True
-			return list2text(self.lst) < list2text(other.lst)
-		return super(ListTableWidgetItem, self).__lt__(other)
-	def setList(self, lst):
-		self.lst = lst
-		self.setText(list2text(lst))
-	def setData(self, role, value):
-		if role == Qt.EditRole:
-			self.lst = text2list(value)
-			super(ListTableWidgetItem, self).setData(role, list2text(self.lst))
-		else: super(ListTableWidgetItem, self).setData(role, value)
+	def __init__(self, data, addLinebreaks = True):
+		self.setAutomaticLinebreaksEnabled(addLinebreaks)
+		super(ListTableWidgetItem, self).__init__(data)
+	def setAutomaticLinebreaksEnabled(self, enabled):
+		self.addLinebreaks = enabled
+	def data2text(self, data):
+		if self.addLinebreaks:
+			t = ''
+			for char in data:
+				if isinstance(char, str): t += char # normal case
+				else: # special case
+					if t and char[0] in ['SEP', 'LF']: t += '\n' # extra linebreak before
+					t += '[%s]' % char[0]
+					if char[0] in ['SEP']: t += '\n' # extra linebreak after
+			return t
+		else: return list2text(data)
+	def text2data(self, text):
+		return text2list(text.replace('\n', ''))
+	def dataLt(self, dataA, dataB):
+		if not dataA and dataB: return False
+		if dataA and not dataB: return True
+		return list2text(dataA) < list2text(dataB)
+
+class MultiLineItemDelegate(QItemDelegate):
+	""" A QItemDelegate for entering multi-line text into a table cell. """
+	def createEditor(self, parent, option, index):
+		editor = QPlainTextEdit(parent)
+		editor.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) # disable both scrollbars
+		editor.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		return editor
+	def setEditorData(self, editor, index):
+		self.originalText = index.data() # save text before editing
+		if self.editorEvent == QEvent.KeyPress: editor.setPlainText('') # clear text if entered by key press
+		else: editor.setPlainText(index.data()) # else insert text
+		if editor.height() <= 24: editor.setLineWrapMode(QPlainTextEdit.NoWrap) # disable word wrap if single line text
+		editor.moveCursor(QTextCursor.End) # move cursor to end of text
+	def editorEvent(self, event, model, option, index):
+		self.editorEvent = event.type()
+		return False
+	def setModelData(self, editor, model, index):
+		model.setData(index, editor.toPlainText())
+	def eventFilter(self, editor, event):
+		if not editor or not event: return False
+		if event.type() in [QEvent.KeyPress]:
+			# Return/Enter -> enter linebreak OR close editor
+			if event.key() in [Qt.Key_Return, Qt.Key_Enter]:
+				if event.modifiers() in [Qt.ShiftModifier, Qt.ControlModifier]:
+					editor.insertPlainText('\n')
+					return True
+				else:
+					self.commitData.emit(editor)
+					self.closeEditor.emit(editor)
+					return True
+			# Escape -> restore original text, close editor
+			elif event.key() == Qt.Key_Escape:
+				editor.setPlainText(self.originalText)
+				self.commitData.emit(editor)
+				self.closeEditor.emit(editor)
+				return True
+		return super(QItemDelegate, self).eventFilter(editor, event)
 
 
 ############
@@ -160,7 +242,7 @@ class ListTableWidgetItem(QTableWidgetItem):
 class Window(QMainWindow):
 	""" The Main Window of the editor. """
 	
-	def __init__(self):
+	def __init__(self, load_file = None):
 		super(Window, self).__init__()
 		uiFile = QFile(':/Resources/Forms/window.ui')
 		uiFile.open(QFile.ReadOnly)
@@ -196,16 +278,40 @@ class Window(QMainWindow):
 		# dialogs
 		self.dialogs = list()
 		
-		# menu
+		# menu > file
 		self.actionOpen.triggered.connect(self.openFile)
+		self.actionOpen.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
 		self.actionSave.triggered.connect(self.saveFile)
+		self.actionSave.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
 		self.actionSaveAs.triggered.connect(self.saveFileAs)
+		self.actionSaveAs.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+		self.actionClose.triggered.connect(self.closeFile)
+		self.actionClose.setIcon(self.style().standardIcon(QStyle.SP_DialogCloseButton))
 		self.actionImport.triggered.connect(self.importFile)
+		self.actionImport.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
 		self.actionExport.triggered.connect(self.exportFile)
+		self.actionExport.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
 		self.actionApplyPatch.triggered.connect(self.importPatch)
 		self.actionCreatePatch.triggered.connect(self.exportPatch)
-		self.actionSeparatorToken.triggered.connect(self.editSeparatorToken)
 		
+		# menu > edit
+		self.menuDecodingTableGroup = QActionGroup(self.menuDecodingTable)
+		self.menuDecodingTable.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+		self.menuDecodingTableGroup.addAction(self.actionDecodingTableFromSav) # table from save
+		self.menuDecodingTableGroup.addAction(self.actionNoDecodingTable) # no table
+		if not path.exists(TABLE_PATH): os.makedirs(TABLE_PATH) # create directory if missing
+		for filename in [f for f in os.listdir(TABLE_PATH) if path.splitext(f)[1] == '.txt']:
+			file = path.join(TABLE_PATH, filename)
+			action = self.menuDecodingTable.addAction(filename)
+			action.setData(file)
+			action.setCheckable(True)
+			self.menuDecodingTableGroup.addAction(action)
+		self.menuDecodingTableGroup.triggered.connect(self.updateDecodingTable)
+		self.updateDecodingTable(None) # select default
+		self.actionGoToLine.triggered.connect(self.goToLine)
+		self.actionGoToLine.setIcon(self.style().standardIcon(QStyle.SP_MediaSeekForward))
+		
+		# menu > view
 		self.actionHideEmptyTexts.setChecked(Config.get('hide-empty-texts', True))
 		self.actionHideEmptyTexts.triggered.connect(lambda value: Config.set('hide-empty-texts', value))
 		self.actionHideEmptyTexts.triggered.connect(self.filterData)
@@ -213,26 +319,13 @@ class Window(QMainWindow):
 		self.actionScaleRowsToContents.triggered.connect(lambda value: Config.set('scale-rows-to-contents', value))
 		self.actionScaleRowsToContents.triggered.connect(self.resizeTable)
 		
+		# menu > tools
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
+		self.actionFTPClient.setIcon(self.style().standardIcon(QStyle.SP_DriveNetIcon))
 		self.actionSearchDlg.triggered.connect(self.showSearchDlg)
+		self.actionSearchDlg.setIcon(self.style().standardIcon(QStyle.SP_FileDialogContentsView))
 		
-		self.actionAbout.triggered.connect(self.showAbout)
-		self.actionCheckForUpdates.triggered.connect(lambda: self.checkUpdates(True))
-		
-		# decoding table
-		self.menuDecodingTableGroup = QActionGroup(self.menuDecodingTable)
-		self.menuDecodingTableGroup.addAction(self.actionDecodingTableFromSav) # table from save
-		self.menuDecodingTableGroup.addAction(self.actionNoDecodingTable) # no table
-		if not path.exists(TABLE_PATH): os.makedirs(TABLE_PATH) # create directory if missing
-		for file in [f for f in os.listdir(TABLE_PATH) if path.splitext(f)[1] == '.txt']:
-			file = path.join(TABLE_PATH, file)
-			action = self.menuDecodingTable.addAction(file)
-			action.setCheckable(True)
-			self.menuDecodingTableGroup.addAction(action)
-		self.menuDecodingTableGroup.triggered.connect(self.updateDecodingTable)
-		self.updateDecodingTable(None) # select default
-		
-		# language
+		# menu > settings
 		self.menuLanguageGroup = QActionGroup(self.menuLanguage)
 		self.menuLanguageGroup.addAction(self.actionGerman)
 		self.menuLanguageGroup.addAction(self.actionEnglish)
@@ -242,6 +335,13 @@ class Window(QMainWindow):
 			for dlg in self.dialogs:
 				dlg.retranslateUi()
 		self.menuLanguageGroup.triggered.connect(retranslateUi)
+		self.actionSeparatorToken.triggered.connect(self.editSeparatorToken)
+		
+		# menu > help
+		self.actionAbout.triggered.connect(self.showAbout)
+		self.actionAbout.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+		self.actionCheckForUpdates.triggered.connect(lambda: self.checkUpdates(True))
+		self.actionCheckForUpdates.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))
 		
 		# filter
 		self.editFilter.setFixedWidth(280)
@@ -253,12 +353,20 @@ class Window(QMainWindow):
 		self.table.setColumnCount(5)
 		self.table.cellChanged.connect(self.tableCellChanged)
 		self.table.cellDoubleClicked.connect(self.tableCellDoubleClicked)
+		self.table.setItemDelegate(MultiLineItemDelegate())
 		
 		self.retranslateUi(None)
 		self.setWindowIcon(QIcon(ICON))
 		self.show()
 		self.resizeTable()
 		self.checkUpdates()
+		
+		# open file
+		if load_file:
+			_, type = path.splitext(load_file)
+			if type.lower() in ['.savj', '.save']: self._openFile(load_file)
+			elif type.lower() in ['.binj', '.e']: self._importFile(load_file)
+			else: self.showWarning(self.tr('warning.fileNotCompatible') % APPNAME)
 	
 	def retranslateUi(self, language):
 		# change locale
@@ -279,27 +387,29 @@ class Window(QMainWindow):
 		app.installTranslator(baseTranslator)
 		
 		# update texts
-		self.setWindowTitle(self.tr('BinJEditor'))
+		self.setWindowTitle(APPNAME)
 		self.editFilter.setPlaceholderText(self.tr('Filter'))
 		self.buttonFilter.setText(self.tr('⨉'))
-		self.table.setHorizontalHeaderLabels([self.tr('id'), self.tr('orig.bytes'), self.tr('orig.text'), self.tr('edit.bytes'), self.tr('edit.text')])
+		self.table.setHorizontalHeaderLabels([self.tr('line'), self.tr('orig.bytes'), self.tr('orig.text'), self.tr('edit.bytes'), self.tr('edit.text')])
 		self.menuFile.setTitle(self.tr('File'))
 		self.menuHelp.setTitle(self.tr('Help'))
 		self.menuEdit.setTitle(self.tr('Edit'))
 		self.menuDecodingTable.setTitle(self.tr('Decoding Table'))
+		self.actionGoToLine.setText(self.tr('Go to Line...'))
 		self.menuView.setTitle(self.tr('View'))
 		self.menuTools.setTitle(self.tr('Tools'))
 		self.menuSettings.setTitle(self.tr('Settings'))
 		self.menuLanguage.setTitle(self.tr('Language'))
 		self.actionOpen.setText(self.tr('Open...'))
-		self.actionAbout.setText(self.tr('About BinJ Editor...'))
-		self.actionCheckForUpdates.setText(self.tr('Check for Updates...'))
-		self.actionImport.setText(self.tr('Import...'))
-		self.actionExport.setText(self.tr('Export...'))
 		self.actionSave.setText(self.tr('Save'))
 		self.actionSaveAs.setText(self.tr('Save As...'))
+		self.actionImport.setText(self.tr('Import...'))
+		self.actionExport.setText(self.tr('Export...'))
 		self.actionApplyPatch.setText(self.tr('Apply Patch...'))
 		self.actionCreatePatch.setText(self.tr('Create Patch...'))
+		self.actionClose.setText(self.tr('Close'))
+		self.actionAbout.setText(self.tr('About...') % APPNAME)
+		self.actionCheckForUpdates.setText(self.tr('Check for Updates...'))
 		self.actionHideEmptyTexts.setText(self.tr('Hide Empty Texts'))
 		self.actionScaleRowsToContents.setText(self.tr('Scale Rows to Contents'))
 		self.actionDecodingTableFromSav.setText(self.tr('Table from Save'))
@@ -356,11 +466,11 @@ class Window(QMainWindow):
 			tag_version = ver2int(tag)
 			
 			if current_version == tag_version:
-				if showFailure: self.showInfo(self.tr('update.newestVersion') % self.tr('appname'))
+				if showFailure: self.showInfo(self.tr('update.newestVersion') % APPNAME)
 				return
 			
 			if current_version > tag_version:
-				if showFailure: self.showInfo(self.tr('update.newerVersion') % self.tr('appname'))
+				if showFailure: self.showInfo(self.tr('update.newerVersion') % APPNAME)
 				return
 			
 			# show message
@@ -368,10 +478,11 @@ class Window(QMainWindow):
 			msg.setWindowTitle(self.tr('Check for Updates...'))
 			msg.setWindowIcon(QIcon(ICON))
 			text = '<html><body><p>%s</p><p>%s: <code>%s</code><br/>%s: <code>%s</code></p><p>%s</p></body></html>'
-			msg.setText(text % (self.tr('update.newVersionAvailable') % self.tr('appname'), self.tr('update.currentVersion'), VERSION, self.tr('update.newVersion'), tag, self.tr('update.doWhat')))
+			msg.setText(text % (self.tr('update.newVersionAvailable') % APPNAME, self.tr('update.currentVersion'), VERSION, self.tr('update.newVersion'), tag, self.tr('update.doWhat')))
+			info = re.sub(r'!\[([^\]]*)\]\([^)]*\)', '', info) # remove images
 			info = re.sub(r'\[([^\]]*)\]\([^)]*\)', '\\1', info) # remove links
 			info = re.sub(r'__([^_\r\n]*)__|_([^_\r\n]*)_|\*\*([^\*\r\n]*)\*\*|\*([^\*\r\n]*)\*|`([^`\r\n]*)`', '\\1\\2\\3\\4\\5', info) # remove bold, italic and inline code
-			msg.setDetailedText(info)
+			msg.setDetailedText(info.strip())
 			button_open_website = QPushButton(self.tr('update.openWebsite'))
 			msg.addButton(button_open_website, QMessageBox.AcceptRole)
 			msg.addButton(QMessageBox.Cancel)
@@ -391,16 +502,20 @@ class Window(QMainWindow):
 	def openFile(self):
 		""" Opens a .savJ or .savE file. """
 		# ask if file was changed
-		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
-		
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
 		# ask filename
-		dir = Config.get('sav-dir', None)
-		if dir and not path.exists(dir): dir = None
+		dir = Config.get('sav-dir', ROOT)
+		if dir and not path.exists(dir): dir = ROOT
 		filename, _ = QFileDialog.getOpenFileName(self, self.tr('open'), dir, self.tr('type.savj_save') + ';;' + self.tr('type.savj') + ';;' + self.tr('type.save'))
-		if not filename: return
-		_, type = path.splitext(filename)
+		if not filename: return False
 		Config.set('sav-dir', path.dirname(filename))
+		# open file
+		return self._openFile(filename)
+	
+	def _openFile(self, filename):
+		""" Implements opening of .savJ and .savE files. """
 		self.updateFilename(filename, True)
+		_, type = path.splitext(filename)
 		
 		# load and set extra for savJ, set mode
 		if type.lower() == '.savj':
@@ -445,29 +560,26 @@ class Window(QMainWindow):
 		self.updateDecodingTable(self.actionDecodingTableFromSav)
 		self.flag['editing'] = False
 		self.setData(orig_data, edit_data)
+		return True
 	
 	def saveFile(self):
 		""" Saves the current .savJ or .savE file. """
-		self.updateFilename(self.info['filename'], True)
-		self._saveFile(self.info['filename'])
-		return True
+		return self._saveFile(self.info['filename'])
 	
 	def saveFileAs(self):
 		""" Saves a .savJ or .savE file. """
 		# ask filename
 		dir = Config.get('sav-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
-		else: dir = path.splitext(self.info['filename'])[0]
+		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, {'binJ': self.tr('type.savj'), 'e': self.tr('type.save')}[self.info['mode']])
 		if not filename: return False
 		Config.set('sav-dir', path.dirname(filename))
-		self.updateFilename(filename, True)
 		# save savJ or savE
-		self._saveFile(filename)
-		return True
+		return self._saveFile(filename)
 	
 	def _saveFile(self, filename):
-		""" Implements the saving of .savJ and .savE files.
+		""" Implements saving of .savJ and .savE files.
 			Writes the original text to 'orig.datJ'.
 			Writes the edited text to 'edit.datJ'.
 			Writes the SEP char to 'SEP.bin'.
@@ -485,6 +597,9 @@ class Window(QMainWindow):
 			  Writes the scripts to 'scripts.spt'.
 			  Writes the links to 'links.tabE'.
 		"""
+		self.info['filename'] = filename
+		self.updateFilename(filename, True)
+		
 		# create data objects
 		origj = createDatJ([bytes for bytes, _, _, _ in self.data])
 		editj = createDatJ([bytes for _, _, bytes, _ in self.data])
@@ -497,22 +612,22 @@ class Window(QMainWindow):
 		
 		# save temporary files
 		orig_filename = path.join(tempdir(), 'orig.datJ')
-		with open(orig_filename, 'w', encoding = 'ASCII') as file:
+		with open(orig_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 			file.write(origj)
 		edit_filename = path.join(tempdir(), 'edit.datJ')
-		with open(edit_filename, 'w', encoding = 'ASCII') as file:
+		with open(edit_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 			file.write(editj)
 		sep_filename = path.join(tempdir(), 'SEP.bin')
 		with open(sep_filename, 'wb') as file:
 			file.write(self.info['SEP'])
 		special_filename = path.join(tempdir(), 'special.tabJ')
-		with open(special_filename, 'w', encoding = 'UTF-8') as file:
+		with open(special_filename, 'w', encoding = 'UTF-8', newline = '\n') as file:
 			file.write(specialj)
 		decode_filename = path.join(tempdir(), 'decode.tabJ')
-		with open(decode_filename, 'w', encoding = 'ASCII') as file:
+		with open(decode_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 			file.write(decodej)
 		encode_filename = path.join(tempdir(), 'encode.tabJ')
-		with open(encode_filename, 'w', encoding = 'ASCII') as file:
+		with open(encode_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 			file.write(encodej)
 		
 		# create data objects and save temporary files for savJ
@@ -528,15 +643,15 @@ class Window(QMainWindow):
 				file.write(self.extra['prefix'])
 			header = createDatE(self.extra['header'])
 			header_filename = path.join(tempdir(), 'header.datE')
-			with open(header_filename, 'w', encoding = 'ASCII') as file:
+			with open(header_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 				file.write(header)
 			scripts = createSpt(self.extra['scripts'])
 			scripts_filename = path.join(tempdir(), 'scripts.spt')
-			with open(scripts_filename, 'w', encoding = 'ASCII') as file:
+			with open(scripts_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 				file.write(scripts)
 			links = createTabE(self.extra['links'])
 			links_filename = path.join(tempdir(), 'links.tabE')
-			with open(links_filename, 'w', encoding = 'ASCII') as file:
+			with open(links_filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 				file.write(links)
 		
 		# save savJ
@@ -582,19 +697,38 @@ class Window(QMainWindow):
 		# update decoding table
 		self.cache['decodingTableFromSave'] = self.info['decodingTable']
 		self.updateDecodingTable(self.actionDecodingTableFromSav)
+		return True
+	
+	def closeFile(self):
+		# ask if file was changed
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
+		# close file
+		self.info['filename'] = None
+		self.info['mode'] = None
+		self.info['SEP'] = None
+		self.data = None
+		self.extra = dict()
+		self.updateFilename(None)
+		self.setData(list())
+		return True
 	
 	def importFile(self):
 		""" Imports a .binJ or .e file. """
 		# ask if file was changed
-		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
 		# ask filename
-		dir = Config.get('import-file-dir', None)
-		if dir and not path.exists(dir): dir = None
+		dir = Config.get('import-file-dir', ROOT)
+		if dir and not path.exists(dir): dir = ROOT
 		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.binj_e') + ';;' + self.tr('type.binj') + ';;' + self.tr('type.e'))
-		if not filename: return
-		_, type = path.splitext(filename)
+		if not filename: return False
 		Config.set('import-file-dir', path.dirname(filename))
+		# import file
+		return self._importFile(filename)
+	
+	def _importFile(self, filename):
+		""" Implements importing of .binJ and .e files. """
 		self.updateFilename(filename, False)
+		_, type = path.splitext(filename)
 		
 		# load SEP from config
 		self.info['SEP'] = parseHex(Config.get('SEP', 'E31B'))
@@ -617,6 +751,7 @@ class Window(QMainWindow):
 				self.info['mode'] = 'e'
 			self.extra = extra
 			self.setData(orig_data)
+			return True
 		except:
 			self.showError(self.tr('error.importFailed'))
 			self.info['filename'] = None
@@ -626,16 +761,20 @@ class Window(QMainWindow):
 			self.extra = dict()
 			self.updateFilename(None)
 			self.setData(list())
+			return False
 	
 	def exportFile(self):
 		""" Exports a .binJ or .e file. """
 		dir = Config.get('export-file-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
-		else: dir = path.splitext(self.info['filename'])[0]
+		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.binj'), 'e': self.tr('type.e')}[self.info['mode']])
 		if not filename: return False
 		Config.set('export-file-dir', path.dirname(filename))
-		
+		return self._exportFile(filename)
+	
+	def _exportFile(self, filename):
+		""" Implements exporting of .binJ and .e files. """
 		# create data
 		data = [edit if edit else orig for orig, _, edit, _ in self.data]
 		
@@ -647,24 +786,28 @@ class Window(QMainWindow):
 			bin = createE(data, self.info['SEP'], self.extra)
 			with open(filename, 'wb') as file:
 				with GzipFile(fileobj=file, mode='w', filename='', mtime=0) as gzipFile: gzipFile.write(bin)
-		
 		return True
 	
 	def importPatch(self):
 		""" Imports a patch from a .patJ / .patE or compatible .binJ / .e file. """
 		# ask if file was changed
-		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return
+		if self.flag['changed'] and not self.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
 		# ask filename
-		dir = Config.get('import-patch-dir', None)
-		if dir and not path.exists(dir): dir = None
+		dir = Config.get('import-patch-dir', ROOT)
+		if dir and not path.exists(dir): dir = ROOT
 		extensions = {
 			'binJ': self.tr('type.patj_binj') + ';;' + self.tr('type.patj') + ';;' + self.tr('type.binj'),
 			'e':    self.tr('type.pate_e')    + ';;' + self.tr('type.pate') + ';;' + self.tr('type.e')
 		}[self.info['mode']]
 		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, extensions)
-		if not filename: return
-		_, type = path.splitext(filename)
+		if not filename: return False
 		Config.set('import-patch-dir', path.dirname(filename))
+		# import patch
+		return self._importPatch(filename)
+	
+	def _importPatch(self, filename):
+		""" Implements importing of .patJ / .patE and .binJ / .e files. """
+		_, type = path.splitext(filename)
 		
 		# import from patj / pate
 		if type.lower() in ['.patj', '.pate']:
@@ -675,7 +818,7 @@ class Window(QMainWindow):
 			# check if compatible
 			if len(edit_data) != len(self.data):
 				# lengths differ -> show warning and ask to continue
-				if not self.askWarning(self.tr('warning.lengthsDiffer')): return
+				if not self.askWarning(self.tr('warning.lengthsDiffer')): return False
 				# trim or pad edit data
 				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
 				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
@@ -708,7 +851,7 @@ class Window(QMainWindow):
 					SEP = parseHex(sep_from_settings)
 				elif msg.clickedButton() == button_from_current_file:
 					SEP = self.info['SEP']
-				else: return # abort
+				else: return False # abort
 			else: SEP = self.info['SEP']
 			
 			try:
@@ -720,12 +863,12 @@ class Window(QMainWindow):
 					edit_data, extra = parseE(edit_bin, SEP)
 			except:
 				self.showError(self.tr('error.importFailed'))
-				return
+				return False
 			
 			# check if compatible
 			if len(edit_data) != len(self.data): # check data length
 				# lengths differ -> show warning and ask to continue
-				if not self.askWarning(self.tr('warning.lengthsDiffer')): return
+				if not self.askWarning(self.tr('warning.lengthsDiffer')): return False
 				# trim or pad edit data
 				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
 				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
@@ -734,41 +877,45 @@ class Window(QMainWindow):
 			if self.info['mode'] == 'binJ':
 				if extra['prefix'] != self.extra['prefix']:
 					# prefixes do not match -> show warning and ask to continue
-					if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+					if not self.askWarning(self.tr('warning.prefixesDiffer')): return False
 			
 			# check if compatible for binj
 			elif self.info['mode'] == 'e':
 				# something does not match -> show warning and ask to continue
 				if extra['prefix'] != self.extra['prefix']:
-					if not self.askWarning(self.tr('warning.prefixesDiffer')): return
+					if not self.askWarning(self.tr('warning.prefixesDiffer')): return False
 				if extra['header'] != self.extra['header']:
-					if not self.askWarning(self.tr('warning.HeadersDiffer')): return
+					if not self.askWarning(self.tr('warning.HeadersDiffer')): return False
 				if extra['scripts'] != self.extra['scripts']:
-					if not self.askWarning(self.tr('warning.ScriptsDiffer')): return
+					if not self.askWarning(self.tr('warning.ScriptsDiffer')): return False
 				if extra['links'] != self.extra['links']:
-					if not self.askWarning(self.tr('warning.LinksDiffer')): return
+					if not self.askWarning(self.tr('warning.LinksDiffer')): return False
 			
 			# set data
 			orig_data = [bytes for bytes, _, _, _ in self.data]
 			edit_data = [edit if edit != orig else b'' for orig, edit in zip(orig_data, edit_data)] # filter equal elements
 			self.updateFilename() # show file changed
 			self.setData(orig_data, edit_data)
+			return True
 	
 	def exportPatch(self):
 		""" Exports a patch file as a .patJ or .patE file. """
 		dir = Config.get('export-patch-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
-		else: dir = path.splitext(self.info['filename'])[0]
+		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
 		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.patj'), 'e': self.tr('type.pate')}[self.info['mode']])
 		if not filename: return False
 		_, type = path.splitext(filename)
 		Config.set('export-patch-dir', path.dirname(filename))
-		
+		return self._exportPatch(filename)
+	
+	def _exportPatch(self, filename):
+		""" Implements exporting of .patJ and .patE files. """
 		# create patch
 		patch = createDatJ([bytes for _, _, bytes, _ in self.data])
 		
 		# save patJ or patE
-		with open(filename, 'w', encoding = 'ASCII') as file:
+		with open(filename, 'w', encoding = 'ASCII', newline = '\n') as file:
 			file.write(patch)
 		return True
 	
@@ -786,7 +933,7 @@ class Window(QMainWindow):
 					<p style="text-align: center;">%s</p>
 					<p>%s</p>
 				</body></html>'''
-		msg.setText(text % (self.tr('appname'), VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR, self.tr('about.specialThanks') % SPECIAL_THANKS))
+		msg.setText(text % (APPNAME, VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR, self.tr('about.specialThanks') % SPECIAL_THANKS))
 		msg.setStandardButtons(QMessageBox.Ok)
 		msg.exec_()
 	
@@ -804,6 +951,27 @@ class Window(QMainWindow):
 			self.editSeparatorToken()
 			return
 		Config.set('SEP', new_sep.upper())
+	
+	def goToLine(self):
+		dlg = QInputDialog()
+		dlg.setInputMode(QInputDialog.IntInput)
+		dlg.setIntMinimum(1)
+		dlg.setIntMaximum(self.table.rowCount())
+		dlg.setWindowFlags(Qt.WindowCloseButtonHint)
+		dlg.setWindowTitle(self.tr('Go to Line...'))
+		dlg.setWindowIcon(QIcon(ICON))
+		dlg.setLabelText(self.tr('dlg.goToLine'))
+		current_row = self.table.currentRow()
+		line = self.table.item(current_row, 0).data() if current_row != -1 else 1
+		dlg.setIntValue(line)
+		if not dlg.exec_(): return
+		new_line = dlg.intValue()
+		self.table.clearSelection()
+		line2row = {self.table.item(r, 0).data(): r for r in range(self.table.rowCount()) if not self.table.isRowHidden(r) and self.table.item(r, 0).data() >= new_line}
+		if line2row:
+			new_row = sorted(line2row.items())[0][1]
+			self.table.setCurrentCell(new_row, 4)
+		self.scrollToSelectedItem()
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
@@ -896,14 +1064,15 @@ class Window(QMainWindow):
 		self.actionDecodingTableFromSav.setEnabled(self.flag['savable'])
 		# set window title
 		if self.info['filename']:
-			self.setWindowTitle('%s%s - %s' % ('*' if self.flag['changed'] else '', path.basename(self.info['filename']), self.tr('appname')))
-		else: self.setWindowTitle(self.tr('appname'))
-		# activate actions
+			self.setWindowTitle('%s%s - %s' % ('*' if self.flag['changed'] else '', path.basename(self.info['filename']), APPNAME))
+		else: self.setWindowTitle(APPNAME)
 		actions_enabled = self.info['filename'] is not None
 		self.actionSaveAs.setEnabled(actions_enabled)
+		self.actionClose.setEnabled(actions_enabled)
 		self.actionExport.setEnabled(actions_enabled)
 		self.actionApplyPatch.setEnabled(actions_enabled)
 		self.actionCreatePatch.setEnabled(actions_enabled)
+		self.actionGoToLine.setEnabled(actions_enabled)
 		self.actionFTPClient.setEnabled(actions_enabled)
 	
 	def updateDecodingTable(self, arg):
@@ -929,7 +1098,7 @@ class Window(QMainWindow):
 		elif arg is None:
 			# select from config if found
 			default = Config.get('decoding-table')
-			if default: idx = next((i for i, a in enumerate(self.menuDecodingTableGroup.actions()) if a.text() == default), -1)
+			if default: idx = next((i for i, a in enumerate(self.menuDecodingTableGroup.actions()) if a.data() == default), -1)
 			else: idx = -1
 			# else use first res or no table
 			if idx == -1: idx = 2 if len(self.menuDecodingTableGroup.actions()) >= 3 else 1
@@ -937,13 +1106,13 @@ class Window(QMainWindow):
 			action.setChecked(True)
 			if action is self.actionNoDecodingTable:
 				self.info['decodingTable'] = {'encode': dict(), 'decode': dict(), 'special': dict()}
-			else: self.info['decodingTable'] = parseDecodingTable(action.text())
+			else: self.info['decodingTable'] = parseDecodingTable(action.data())
 		
 		# arg is normal option -> select option by given filename
 		else:
-			filename = arg.text()
+			filename = arg.data()
 			Config.set('decoding-table', filename)
-			action = next(action for action in self.menuDecodingTableGroup.actions() if action.text() == filename)
+			action = next(action for action in self.menuDecodingTableGroup.actions() if action.data() == filename)
 			action.setChecked(True)
 			self.info['decodingTable'] = parseDecodingTable(filename)
 		
@@ -966,15 +1135,26 @@ class Window(QMainWindow):
 		number_width = 40
 		scrollbar_width = 20
 		self.table.setColumnWidth(0, number_width)
-		column_width = int((self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width) / 4)
-		for i in range(1, 5):
-			self.table.setColumnWidth(i, column_width)
+		visible_columns = sum(1 for column in range(1, 5) if not self.table.isColumnHidden(column))
+		column_width = int((self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width) / visible_columns)
+		for column in range(1, 5):
+			if self.table.isColumnHidden(column): continue
+			self.table.setColumnWidth(column, column_width)
+		
+		# update automatic linebreaks
+		scaleRows = self.actionScaleRowsToContents.isChecked()
+		for r in range(self.table.rowCount()):
+			for c in [2, 4]:
+				self.table.item(r, c).setAutomaticLinebreaksEnabled(scaleRows)
 		
 		# resize rows
-		if self.actionScaleRowsToContents.isChecked():
+		if scaleRows:
 			self.table.resizeRowsToContents()
 		else:
 			self.table.verticalHeader().setDefaultSectionSize(self.table.verticalHeader().defaultSectionSize())
+		
+		# scroll to selection
+		self.scrollToSelectedItem()
 	
 	## DATA ##
 	
@@ -990,6 +1170,7 @@ class Window(QMainWindow):
 		self.table.setRowCount(0)
 		oldLength = len(self.data) if self.data else 0
 		self.data = list()
+		scaleRows = self.actionScaleRowsToContents.isChecked()
 		
 		# add to data and table
 		for i, orig_key in enumerate(orig_data):
@@ -1004,7 +1185,7 @@ class Window(QMainWindow):
 			# add row
 			row = self.table.rowCount()
 			self.table.insertRow(row)
-			# id
+			# line
 			item = IntTableWidgetItem(i+1)
 			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 			self.table.setItem(row, 0, item)
@@ -1013,14 +1194,14 @@ class Window(QMainWindow):
 			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 			self.table.setItem(row, 1, item)
 			# original text
-			item = ListTableWidgetItem(orig_value)
+			item = ListTableWidgetItem(orig_value, scaleRows)
 			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 			self.table.setItem(row, 2, item)
 			# edit bytes
 			item = HexBytesTableWidgetItem(edit_key)
 			self.table.setItem(row, 3, item)
 			# edit text
-			item = ListTableWidgetItem(edit_value)
+			item = ListTableWidgetItem(edit_value, scaleRows)
 			self.table.setItem(row, 4, item)
 		
 		# resize table, finish loading
@@ -1061,16 +1242,16 @@ class Window(QMainWindow):
 		# get cells
 		bytes_cell = self.table.item(row, 3)
 		list_cell  = self.table.item(row, 4)
-		id = self.table.item(row, 0).int - 1 # logical row
+		id = self.table.item(row, 0).data() - 1 # logical row
 		
 		# edit bytes
 		if column == 3:
-			bytes = bytes_cell.bytes
+			bytes = bytes_cell.data()
 			lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # convert to list
 		
 		# edit text
 		if column == 4:
-			lst = list_cell.lst
+			lst = list_cell.data()
 			# convert to bytes
 			try:
 				bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
@@ -1078,16 +1259,17 @@ class Window(QMainWindow):
 			except Exception as e:
 				self.showError(self.tr('error.unknownChar') % e.args[0])
 				self.flag['editing'] = True
-				list_cell.setList(self.data[id][3])
+				list_cell.setData(data=self.data[id][3])
 				self.flag['editing'] = False
 				return
 		
 		# change data and cells
 		self.flag['editing'] = True
 		self.updateFilename()
-		bytes_cell.setBytes(bytes)
-		list_cell.setList(lst)
+		bytes_cell.setData(data=bytes)
+		list_cell.setData(data=lst)
 		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
+		if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(row)
 		self.flag['editing'] = False
 	
 	def tableCellKeyPressed(self, row, column, keys):
@@ -1100,6 +1282,7 @@ class Window(QMainWindow):
 			s, lr = ('', None)
 			for r, c in sorted(indices):
 				text = self.table.item(r, c).text()
+				text = text.replace('\n', '')
 				if lr is not None: s += '\t' if r == lr else linesep # go to next row or column
 				s += text
 				lr = r
@@ -1134,7 +1317,7 @@ class Window(QMainWindow):
 				
 				bytes_cell = self.table.item(r, 3)
 				list_cell  = self.table.item(r, 4)
-				id = self.table.item(r, 0).int - 1 # logical row
+				id = self.table.item(r, 0).data() - 1 # logical row
 				
 				# paste to bytes
 				if c == 3:
@@ -1152,16 +1335,17 @@ class Window(QMainWindow):
 						self.showError(self.tr('error.unknownChar') % e.args[0])
 						self.keysPressed.clear() # prevent keys from keeping pressed
 						self.flag['editing'] = True
-						list_cell.setList(self.data[id][3])
+						list_cell.setData(data=self.data[id][3])
 						self.flag['editing'] = False
 						break # break loop
 				
 				# change data and cells
 				self.flag['editing'] = True
 				self.updateFilename()
-				bytes_cell.setBytes(bytes)
-				list_cell.setList(lst)
+				bytes_cell.setData(data=bytes)
+				list_cell.setData(data=lst)
 				self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
+				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
 				self.flag['editing'] = False
 			self.table.setSortingEnabled(True)
 			return
@@ -1183,16 +1367,18 @@ class Window(QMainWindow):
 				if s != '': s += linesep # go to next row
 				for j, c in enumerate(columns):
 					text = self.table.item(r, c).text()
+					text = text.replace('\n', '')
 					if j: s += '\t' # go to next column
 					s += text
 				
 				# clear
-				id = self.table.item(r, 0).int - 1 # logical row
+				id = self.table.item(r, 0).data() - 1 # logical row
 				self.flag['editing'] = True
 				self.updateFilename()
-				self.table.item(r, 3).setBytes(b'')
-				self.table.item(r, 4).setList(list())
+				self.table.item(r, 3).setData(data=b'')
+				self.table.item(r, 4).setData(data=list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
+				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
 				self.flag['editing'] = False
 			self.table.setSortingEnabled(True)
 			
@@ -1209,12 +1395,13 @@ class Window(QMainWindow):
 			
 			self.table.setSortingEnabled(False)
 			for r in sorted(rows):
-				id = self.table.item(r, 0).int - 1 # logical row
+				id = self.table.item(r, 0).data() - 1 # logical row
 				self.flag['editing'] = True
 				self.updateFilename()
-				self.table.item(r, 3).setBytes(b'')
-				self.table.item(r, 4).setList(list())
+				self.table.item(r, 3).setData(data=b'')
+				self.table.item(r, 4).setData(data=list())
 				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
+				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
 				self.flag['editing'] = False
 			self.table.setSortingEnabled(True)
 			return
@@ -1230,7 +1417,7 @@ class Window(QMainWindow):
 	def tableCellDoubleClicked(self, row, column):
 		if column not in [1, 2]: return
 		# copy bytes if edited data is empty
-		id = self.table.item(row, 0).int - 1 # logical row
+		id = self.table.item(row, 0).data() - 1 # logical row
 		if self.data[id][2]: return
 		if column == 1:
 			bytes = self.data[id][0]
@@ -1247,9 +1434,10 @@ class Window(QMainWindow):
 				return # abort
 		self.flag['editing'] = True
 		self.updateFilename()
-		self.table.item(row, 3).setBytes(bytes)
-		self.table.item(row, 4).setList(lst)
+		self.table.item(row, 3).setData(data=bytes)
+		self.table.item(row, 4).setData(data=lst)
 		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
+		if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(row)
 		self.flag['editing'] = False
 	
 	## MISC ##
@@ -1438,23 +1626,26 @@ class SearchDlg(QDialog):
 		loadUi(uiFile, self)
 		uiFile.close()
 		
-		self.setWindowFlags(Qt.WindowCloseButtonHint)
+		self.setWindowFlags(Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
 		self.SEP = SEP
+		
+		# key listener
+		self.keysPressed = set()
 		
 		# search button
 		self.searching = False
 		self.buttonSearch.clicked.connect(lambda: self.toggleSearch())
 		self.toggleSearch(False)
 		
-		# search for
+		# search settings
 		for item in Config.get('search.for.history', list()): self.cbSearchFor.addItem(item)
 		self.cbSearchFor.setEditText(Config.get('search.for', ''))
 		self.cbSearchFor.editTextChanged.connect(lambda value: Config.set('search.for', value))
-		# search settings
 		self.useRegex.setChecked(Config.get('search.regex', False))
 		self.useRegex.stateChanged.connect(lambda value: Config.set('search.regex', value))
-		self.editDirectory.setText(Config.get('search.directory', str(path.abspath('.'))))
-		self.editDirectory.textChanged.connect(lambda value: Config.set('search.directory', value))
+		for item in Config.get('search.directory.history', list()): self.cbDirectory.addItem(item)
+		self.cbDirectory.setEditText(Config.get('search.directory', ''))
+		self.cbDirectory.editTextChanged.connect(lambda value: Config.set('search.directory', value))
 		self.buttonChooseDirectory.clicked.connect(self.askDirectory)
 		self.buttonChooseDirectory.setFixedWidth(22)
 		# files
@@ -1472,6 +1663,19 @@ class SearchDlg(QDialog):
 		self.show()
 		self.resizeTable()
 	
+	def keyPressEvent(self, event):
+		""" Custom key press event. """
+		super(SearchDlg, self).keyPressEvent(event)
+		self.keysPressed.add(event.key())
+		if self.table.currentItem():
+			self.tableCellKeyPressed(self.table.currentRow(), self.table.currentColumn(), self.keysPressed)
+	
+	def keyReleaseEvent(self, event):
+		""" Custom key release event. """
+		super(SearchDlg, self).keyReleaseEvent(event)
+		if event.key() in self.keysPressed:
+			self.keysPressed.remove(event.key())
+	
 	def retranslateUi(self):
 		self.setWindowTitle(self.tr('Search in Files...'))
 		self.labelSettings.setText(self.tr('Search Settings'))
@@ -1485,17 +1689,27 @@ class SearchDlg(QDialog):
 		self.table.setSortingEnabled(True)
 		self.updateCBFiles()
 	
-	def resizeEvent(self, newSize):
-		self.resizeTable()
-	
 	def resizeTable(self):
-		scrollbar_width = 20
-		number_width = 40
-		self.table.setColumnWidth(1, number_width)
-		remaining_width = int(self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width)
-		file_width = int(remaining_width * 0.3)
-		self.table.setColumnWidth(0, file_width)
-		self.table.setColumnWidth(2, remaining_width - file_width)
+		self.table.setColumnWidth(0, 180)
+		self.table.setColumnWidth(1, 40)
+	
+	def tableCellKeyPressed(self, row, column, keys):
+		""" Called when a key is pressed while focussing a table cell. """
+		# Ctrl+C -> copy
+		if {Qt.Key_Control, Qt.Key_C} != keys: return
+		indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
+		
+		# create copy string
+		s, lr = ('', None)
+		for r, c in sorted(indices):
+			text = self.table.item(r, c).text()
+			text = text.replace('\n', '')
+			if lr is not None: s += '\t' if r == lr else linesep # go to next row or column
+			s += text
+			lr = r
+		
+		# copy to clipboard
+		clipboard.copy(s)
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
@@ -1530,10 +1744,10 @@ class SearchDlg(QDialog):
 		self.cbFiles.currentIndexChanged.connect(lambda value: Config.set('search.files', value))
 	
 	def askDirectory(self):
-		""" Ask to choose a directory and updates editDirectory. """
-		dir = QFileDialog.getExistingDirectory(self, self.tr('chooseDirectory'), self.editDirectory.text())
+		""" Ask to choose a directory and updates cbDirectory. """
+		dir = QFileDialog.getExistingDirectory(self, self.tr('chooseDirectory'), self.cbDirectory.currentText())
 		if not dir: return
-		self.editDirectory.setText(dir)
+		self.cbDirectory.setEditText(dir)
 	
 	def toggleSearch(self, flag = None):
 		""" Updates the self.searching flag and the enabled states of all elements.
@@ -1548,7 +1762,7 @@ class SearchDlg(QDialog):
 		self.progressBar.setEnabled(self.searching)
 		self.cbSearchFor.setEnabled(not self.searching)
 		self.useRegex.setEnabled(not self.searching)
-		self.editDirectory.setEnabled(not self.searching)
+		self.cbDirectory.setEnabled(not self.searching)
 		self.buttonChooseDirectory.setEnabled(not self.searching)
 		self.cbFiles.setEnabled(not self.searching)
 		self.cbDecodingTable.setEnabled(not self.searching)
@@ -1560,7 +1774,7 @@ class SearchDlg(QDialog):
 		# parse parameters
 		searchString = self.cbSearchFor.currentText()
 		useRegex = self.useRegex.isChecked()
-		directory = self.editDirectory.text()
+		directory = self.cbDirectory.currentText()
 		fileTypes = self.cbFiles.currentData()
 		decodingTable = self.cbDecodingTable.currentData()
 		
@@ -1579,14 +1793,17 @@ class SearchDlg(QDialog):
 				return
 		decodingTable = parseDecodingTable(decodingTable)
 		
-		# update search for history
-		history = Config.get('search.for.history', list())
-		text = self.cbSearchFor.currentText()
-		if not history or history[0] != text: # add to history
-			history = [text] + history
-			self.cbSearchFor.insertItem(0, text)
-		history = history[:10] # limit to 10 entries
-		Config.set('search.for.history', history)
+		# update search history
+		def updateHistory(comboBox, configKey, limit = 10):
+			history = Config.get(configKey, list())
+			text = comboBox.currentText()
+			if not history or history[0] != text: # add to history
+				history = [text] + history
+				comboBox.insertItem(0, text)
+			history = history[:limit] # limit number of entries
+			Config.set(configKey, history)
+		updateHistory(self.cbSearchFor, 'search.for.history')
+		updateHistory(self.cbDirectory, 'search.directory.history')
 		
 		# collect all files, idle animation
 		self.progressBar.setMaximum(0)
@@ -1640,13 +1857,11 @@ class SearchDlg(QDialog):
 					QApplication.processEvents()
 				
 				# search texts
-				wasUpdated = False
 				for i, line in enumerate(texts):
 					if useRegex:
 						if not pattern.search(line): continue
 					else:
-						if searchString not in line: continue
-					wasUpdated = True
+						if searchString.lower() not in line.lower(): continue
 					
 					# add row
 					row = self.table.rowCount()
@@ -1666,11 +1881,6 @@ class SearchDlg(QDialog):
 					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 					self.table.setItem(row, 2, item)
 			
-			# resize table
-			if wasUpdated:
-				self.resizeTable()
-				QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
-			
 			# update progress bar
 			self.progressBar.setValue(ctr+1)
 			QApplication.processEvents()
@@ -1684,10 +1894,11 @@ class SearchDlg(QDialog):
 ##########
 
 if __name__ == '__main__':
-	app = QApplication(sys.argv)
+	app = QApplication(list())
 	translator = QTranslator()
 	baseTranslator = QTranslator()
 	ICON = QPixmap(':/Resources/Images/icon.ico')
-	window = Window()
+	filename = sys.argv[1] if len(sys.argv) > 1 else None
+	window = Window(filename)
 	window.resizeTable()
 	app.exec_()
