@@ -1222,7 +1222,7 @@ class Window(QMainWindow):
 		for row in range(self.table.rowCount()):
 			visible = True
 			if hideEmpty and not self.table.item(row, 1).text() and not self.table.item(row, 3).text(): visible = False
-			if filter and not any(filter.lower() in self.table.item(row, column).text().lower() for column in range(1, 5)): visible = False
+			if filter and not any(filter.lower() in self.table.item(row, column).text().replace('\n', '').lower() for column in range(1, 5)): visible = False
 			if visible: self.table.showRow(row)
 			else: self.table.hideRow(row)
 		
