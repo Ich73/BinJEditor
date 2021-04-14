@@ -359,8 +359,8 @@ E10A;←
 E10B;↑
 E10C;→
 E10D;↓
-E10E;☆
-E10F;★
+E10E;[EmptyStar]
+E10F;[YellowStar]
 E110;※
 E111;△
 E112;▲
@@ -455,8 +455,8 @@ E16A;【
 E16B;】
 E16C;(-)
 E16D;(♪)
-E16E;(☆)
-E16F;(★)
+E16E;☆
+E16F;★
 # special symbols repeat here
 
 # DQMT symbols
