@@ -6,10 +6,9 @@
 
 # pip install pyqt5
 # pip install pyperclip
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QInputDialog, QDialog, QMessageBox, QAbstractItemView, QTableWidgetItem, QPushButton, QActionGroup, QAction, QItemDelegate, QPlainTextEdit, QStyle
-from PyQt5.QtCore import QTranslator, QLocale, QRegExp, QTimer, QFile, QEvent, Qt
-from PyQt5.QtGui import QRegExpValidator, QIntValidator, QPixmap, QIcon, QFont, QTextCursor
 from JTools import *
 import Resources
 import pyperclip as clipboard
@@ -116,7 +115,7 @@ def parseHex(s):
 	s = ''.join(c for c in s if c in set('0123456789ABCDEFabcdef'))
 	return bytes([int(s[i:i+2], 16) for i in range(0, len(s), 2)])
 
-class DataTableWidgetItem(QTableWidgetItem):
+class DataTableWidgetItem(QtWidgets.QTableWidgetItem):
 	""" A QTableWidgetItem with a data attribute.
 		Qt.EditRole & Qt.DisplayRole -> text
 		Qt.UserRole -> data
@@ -128,7 +127,7 @@ class DataTableWidgetItem(QTableWidgetItem):
 		super(DataTableWidgetItem, self).__init__(self.data2text(data))
 		self._data = data
 	def __lt__(self, other):
-		if isinstance(other, QTableWidgetItem):
+		if isinstance(other, QtWidgets.QTableWidgetItem):
 			return self.dataLt(self._data, other._data)
 		return super(DataTableWidgetItem, self).__lt__(other)
 	def setData(self, role = Qt.UserRole, data = None):
@@ -206,10 +205,10 @@ class PathTableWidgetItem(DataTableWidgetItem):
 	def text2data(self, text):
 		return path.join(self._parent, text)
 
-class MultiLineItemDelegate(QItemDelegate):
+class MultiLineItemDelegate(QtWidgets.QItemDelegate):
 	""" A QItemDelegate for entering multi-line text into a table cell. """
 	def createEditor(self, parent, option, index):
-		editor = QPlainTextEdit(parent)
+		editor = QtWidgets.QPlainTextEdit(parent)
 		editor.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) # disable both scrollbars
 		editor.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		return editor
@@ -217,8 +216,8 @@ class MultiLineItemDelegate(QItemDelegate):
 		self.originalText = index.data() # save text before editing
 		if self.editorEvent == QEvent.KeyPress: editor.setPlainText('') # clear text if entered by key press
 		else: editor.setPlainText(index.data()) # else insert text
-		if editor.height() <= 24: editor.setLineWrapMode(QPlainTextEdit.NoWrap) # disable word wrap if single line text
-		editor.moveCursor(QTextCursor.End) # move cursor to end of text
+		if editor.height() <= 24: editor.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap) # disable word wrap if single line text
+		editor.moveCursor(QtGui.QTextCursor.End) # move cursor to end of text
 	def editorEvent(self, event, model, option, index):
 		self.editorEvent = event.type()
 		return False
@@ -242,20 +241,20 @@ class MultiLineItemDelegate(QItemDelegate):
 				self.commitData.emit(editor)
 				self.closeEditor.emit(editor)
 				return True
-		return super(QItemDelegate, self).eventFilter(editor, event)
+		return super(QtWidgets.QItemDelegate, self).eventFilter(editor, event)
 
 
 ############
 ## Window ##
 ############
 
-class Window(QMainWindow):
+class Window(QtWidgets.QMainWindow):
 	""" The Main Window of the editor. """
 	
 	def __init__(self, load_file = None):
 		super(Window, self).__init__()
-		uiFile = QFile(':/Resources/Forms/window.ui')
-		uiFile.open(QFile.ReadOnly)
+		uiFile = QtCore.QFile(':/Resources/Forms/window.ui')
+		uiFile.open(QtCore.QFile.ReadOnly)
 		loadUi(uiFile, self)
 		uiFile.close()
 		
@@ -290,23 +289,23 @@ class Window(QMainWindow):
 		
 		# menu > file
 		self.actionOpen.triggered.connect(self.openFile)
-		self.actionOpen.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+		self.actionOpen.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogOpenButton))
 		self.actionSave.triggered.connect(self.saveFile)
-		self.actionSave.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+		self.actionSave.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton))
 		self.actionSaveAs.triggered.connect(self.saveFileAs)
-		self.actionSaveAs.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+		self.actionSaveAs.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton))
 		self.actionClose.triggered.connect(self.closeFile)
-		self.actionClose.setIcon(self.style().standardIcon(QStyle.SP_DialogCloseButton))
+		self.actionClose.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
 		self.actionImport.triggered.connect(self.importFile)
-		self.actionImport.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
+		self.actionImport.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ArrowLeft))
 		self.actionExport.triggered.connect(self.exportFile)
-		self.actionExport.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
+		self.actionExport.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ArrowRight))
 		self.actionApplyPatch.triggered.connect(self.importPatch)
 		self.actionCreatePatch.triggered.connect(self.exportPatch)
 		
 		# menu > edit
-		self.menuDecodingTableGroup = QActionGroup(self.menuDecodingTable)
-		self.menuDecodingTable.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+		self.menuDecodingTableGroup = QtWidgets.QActionGroup(self.menuDecodingTable)
+		self.menuDecodingTable.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_FileDialogDetailedView))
 		self.menuDecodingTableGroup.addAction(self.actionDecodingTableFromSav) # table from save
 		self.menuDecodingTableGroup.addAction(self.actionNoDecodingTable) # no table
 		if not path.exists(TABLE_PATH): os.makedirs(TABLE_PATH) # create directory if missing
@@ -319,7 +318,7 @@ class Window(QMainWindow):
 		self.menuDecodingTableGroup.triggered.connect(self.updateDecodingTable)
 		self.updateDecodingTable(None) # select default
 		self.actionGoToLine.triggered.connect(self.goToLine)
-		self.actionGoToLine.setIcon(self.style().standardIcon(QStyle.SP_MediaSeekForward))
+		self.actionGoToLine.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaSeekForward))
 		
 		# menu > view
 		self.actionHideEmptyTexts.setChecked(Config.get('hide-empty-texts', True))
@@ -331,12 +330,12 @@ class Window(QMainWindow):
 		
 		# menu > tools
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
-		self.actionFTPClient.setIcon(self.style().standardIcon(QStyle.SP_DriveNetIcon))
+		self.actionFTPClient.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DriveNetIcon))
 		self.actionSearchDlg.triggered.connect(self.showSearchDlg)
-		self.actionSearchDlg.setIcon(self.style().standardIcon(QStyle.SP_FileDialogContentsView))
+		self.actionSearchDlg.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_FileDialogContentsView))
 		
 		# menu > settings
-		self.menuLanguageGroup = QActionGroup(self.menuLanguage)
+		self.menuLanguageGroup = QtWidgets.QActionGroup(self.menuLanguage)
 		self.menuLanguageGroup.addAction(self.actionGerman)
 		self.menuLanguageGroup.addAction(self.actionEnglish)
 		self.menuLanguageGroup.addAction(self.actionSpanish)
@@ -349,9 +348,9 @@ class Window(QMainWindow):
 		
 		# menu > help
 		self.actionAbout.triggered.connect(self.showAbout)
-		self.actionAbout.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
+		self.actionAbout.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxInformation))
 		self.actionCheckForUpdates.triggered.connect(lambda: self.checkUpdates(True))
-		self.actionCheckForUpdates.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))
+		self.actionCheckForUpdates.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ComputerIcon))
 		
 		# filter
 		self.editFilter.setFixedWidth(280)
@@ -366,7 +365,7 @@ class Window(QMainWindow):
 		self.table.setItemDelegate(MultiLineItemDelegate())
 		
 		self.retranslateUi(None)
-		self.setWindowIcon(QIcon(ICON))
+		self.setWindowIcon(QtGui.QIcon(ICON))
 		self.show()
 		self.resizeTable()
 		self.checkUpdates()
@@ -386,8 +385,8 @@ class Window(QMainWindow):
 			self.actionSpanish: 'es',
 		}
 		if language is None:
-			locale = Config.get('language', QLocale.system().name().split('_')[0])
-			if not QFile.exists(':/Resources/i18n/%s.qm' % locale): locale = 'en'
+			locale = Config.get('language', QtCore.QLocale.system().name().split('_')[0])
+			if not QtCore.QFile.exists(':/Resources/i18n/%s.qm' % locale): locale = 'en'
 			next(k for k, v in action2locale.items() if v == locale).setChecked(True)
 		else: locale = action2locale[language]
 		Config.set('language', locale)
@@ -484,18 +483,18 @@ class Window(QMainWindow):
 				return
 			
 			# show message
-			msg = QMessageBox()
+			msg = QtWidgets.QMessageBox()
 			msg.setWindowTitle(self.tr('Check for Updates...'))
-			msg.setWindowIcon(QIcon(ICON))
+			msg.setWindowIcon(QtGui.QIcon(ICON))
 			text = '<html><body><p>%s</p><p>%s: <code>%s</code><br/>%s: <code>%s</code></p><p>%s</p></body></html>'
 			msg.setText(text % (self.tr('update.newVersionAvailable') % APPNAME, self.tr('update.currentVersion'), VERSION, self.tr('update.newVersion'), tag, self.tr('update.doWhat')))
 			info = re.sub(r'!\[([^\]]*)\]\([^)]*\)', '', info) # remove images
 			info = re.sub(r'\[([^\]]*)\]\([^)]*\)', '\\1', info) # remove links
 			info = re.sub(r'__([^_\r\n]*)__|_([^_\r\n]*)_|\*\*([^\*\r\n]*)\*\*|\*([^\*\r\n]*)\*|`([^`\r\n]*)`', '\\1\\2\\3\\4\\5', info) # remove bold, italic and inline code
 			msg.setDetailedText(info.strip())
-			button_open_website = QPushButton(self.tr('update.openWebsite'))
-			msg.addButton(button_open_website, QMessageBox.AcceptRole)
-			msg.addButton(QMessageBox.Cancel)
+			button_open_website = QtWidgets.QPushButton(self.tr('update.openWebsite'))
+			msg.addButton(button_open_website, QtWidgets.QMessageBox.AcceptRole)
+			msg.addButton(QtWidgets.QMessageBox.Cancel)
 			msg.exec_()
 			res = msg.clickedButton()
 			
@@ -516,7 +515,7 @@ class Window(QMainWindow):
 		# ask filename
 		dir = Config.get('sav-dir', ROOT)
 		if dir and not path.exists(dir): dir = ROOT
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('open'), dir, self.tr('type.savj_save') + ';;' + self.tr('type.savj') + ';;' + self.tr('type.save'))
+		filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, self.tr('open'), dir, self.tr('type.savj_save') + ';;' + self.tr('type.savj') + ';;' + self.tr('type.save'))
 		if not filename: return False
 		Config.set('sav-dir', path.dirname(filename))
 		# open file
@@ -582,7 +581,7 @@ class Window(QMainWindow):
 		dir = Config.get('sav-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, {'binJ': self.tr('type.savj'), 'e': self.tr('type.save')}[self.info['mode']])
+		filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, self.tr('saveAs'), dir, {'binJ': self.tr('type.savj'), 'e': self.tr('type.save')}[self.info['mode']])
 		if not filename: return False
 		Config.set('sav-dir', path.dirname(filename))
 		# save savJ or savE
@@ -729,7 +728,7 @@ class Window(QMainWindow):
 		# ask filename
 		dir = Config.get('import-file-dir', ROOT)
 		if dir and not path.exists(dir): dir = ROOT
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.binj_e') + ';;' + self.tr('type.binj') + ';;' + self.tr('type.e'))
+		filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, self.tr('import'), dir, self.tr('type.binj_e') + ';;' + self.tr('type.binj') + ';;' + self.tr('type.e'))
 		if not filename: return False
 		Config.set('import-file-dir', path.dirname(filename))
 		# import file
@@ -778,7 +777,7 @@ class Window(QMainWindow):
 		dir = Config.get('export-file-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.binj'), 'e': self.tr('type.e')}[self.info['mode']])
+		filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.binj'), 'e': self.tr('type.e')}[self.info['mode']])
 		if not filename: return False
 		Config.set('export-file-dir', path.dirname(filename))
 		return self._exportFile(filename)
@@ -809,7 +808,7 @@ class Window(QMainWindow):
 			'binJ': self.tr('type.patj_binj') + ';;' + self.tr('type.patj') + ';;' + self.tr('type.binj'),
 			'e':    self.tr('type.pate_e')    + ';;' + self.tr('type.pate') + ';;' + self.tr('type.e')
 		}[self.info['mode']]
-		filename, _ = QFileDialog.getOpenFileName(self, self.tr('import'), dir, extensions)
+		filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, self.tr('import'), dir, extensions)
 		if not filename: return False
 		Config.set('import-patch-dir', path.dirname(filename))
 		# import patch
@@ -845,16 +844,16 @@ class Window(QMainWindow):
 				# different tokens -> ask which one to use
 				sep_from_settings = Config.get('SEP', 'E31B')
 				sep_from_current_file = createHex(self.info['SEP']).replace(' ', '')
-				msg = QMessageBox()
-				msg.setIcon(QMessageBox.Critical)
+				msg = QtWidgets.QMessageBox()
+				msg.setIcon(QtWidgets.QMessageBox.Critical)
 				msg.setWindowTitle(self.tr('warning'))
-				msg.setWindowIcon(QIcon(ICON))
+				msg.setWindowIcon(QtGui.QIcon(ICON))
 				msg.setText(self.tr('warning.differentSeparatorTokens') % (sep_from_settings, sep_from_current_file))
-				button_from_settings = QPushButton(sep_from_settings)
-				button_from_current_file = QPushButton(sep_from_current_file)
-				msg.addButton(button_from_settings, QMessageBox.AcceptRole)
-				msg.addButton(button_from_current_file, QMessageBox.AcceptRole)
-				msg.addButton(QMessageBox.Cancel)
+				button_from_settings = QtWidgets.QPushButton(sep_from_settings)
+				button_from_current_file = QtWidgets.QPushButton(sep_from_current_file)
+				msg.addButton(button_from_settings, QtWidgets.QMessageBox.AcceptRole)
+				msg.addButton(button_from_current_file, QtWidgets.QMessageBox.AcceptRole)
+				msg.addButton(QtWidgets.QMessageBox.Cancel)
 				msg.exec_()
 				res = msg.clickedButton()
 				if msg.clickedButton() == button_from_settings:
@@ -913,7 +912,7 @@ class Window(QMainWindow):
 		dir = Config.get('export-patch-dir', None)
 		if dir and path.exists(dir): dir = path.join(dir, path.splitext(path.basename(self.info['filename']))[0])
 		else: dir = path.join(ROOT, path.splitext(self.info['filename'])[0])
-		filename, _ = QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.patj'), 'e': self.tr('type.pate')}[self.info['mode']])
+		filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, self.tr('export'), dir, {'binJ': self.tr('type.patj'), 'e': self.tr('type.pate')}[self.info['mode']])
 		if not filename: return False
 		_, type = path.splitext(filename)
 		Config.set('export-patch-dir', path.dirname(filename))
@@ -933,10 +932,10 @@ class Window(QMainWindow):
 	
 	def showAbout(self):
 		""" Displays the about window. """
-		msg = QMessageBox()
+		msg = QtWidgets.QMessageBox()
 		msg.setIconPixmap(ICON.scaledToWidth(112))
 		msg.setWindowTitle(self.tr('about.title'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		text = '''<html><body style="text-align: center; font-size: 10pt">
 					<p><b style="font-size: 14pt">%s </b><b>%s</b>
 					<br/>@ <a href="%s">%s</a></p>
@@ -944,14 +943,14 @@ class Window(QMainWindow):
 					<p>%s</p>
 				</body></html>'''
 		msg.setText(text % (APPNAME, VERSION, 'https://github.com/%s' % REPOSITORY, 'GitHub', AUTHOR, self.tr('about.specialThanks') % SPECIAL_THANKS))
-		msg.setStandardButtons(QMessageBox.Ok)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
 		msg.exec_()
 	
 	def editSeparatorToken(self):
-		dlg = QInputDialog()
+		dlg = QtWidgets.QInputDialog()
 		dlg.setWindowFlags(Qt.WindowCloseButtonHint)
 		dlg.setWindowTitle(self.tr('settings'))
-		dlg.setWindowIcon(QIcon(ICON))
+		dlg.setWindowIcon(QtGui.QIcon(ICON))
 		dlg.setLabelText(self.tr('dlg.editSeparatorToken'))
 		dlg.setTextValue(Config.get('SEP', 'E31B'))
 		if not dlg.exec_(): return
@@ -963,13 +962,13 @@ class Window(QMainWindow):
 		Config.set('SEP', new_sep.upper())
 	
 	def goToLine(self):
-		dlg = QInputDialog()
-		dlg.setInputMode(QInputDialog.IntInput)
+		dlg = QtWidgets.QInputDialog()
+		dlg.setInputMode(QtWidgets.QInputDialog.IntInput)
 		dlg.setIntMinimum(1)
 		dlg.setIntMaximum(self.table.rowCount())
 		dlg.setWindowFlags(Qt.WindowCloseButtonHint)
 		dlg.setWindowTitle(self.tr('Go to Line...'))
-		dlg.setWindowIcon(QIcon(ICON))
+		dlg.setWindowIcon(QtGui.QIcon(ICON))
 		dlg.setLabelText(self.tr('dlg.goToLine'))
 		current_row = self.table.currentRow()
 		line = self.table.item(current_row, 0).data() if current_row != -1 else 1
@@ -987,52 +986,52 @@ class Window(QMainWindow):
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Critical)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Critical)
 		msg.setWindowTitle(self.tr('error'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
 		if detailedText: msg.setDetailedText(detailedText)
-		msg.setStandardButtons(QMessageBox.Ok)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
 		msg.exec_()
 	
 	def showWarning(self, text, detailedText = None):
 		""" Displays a warning message. """
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Warning)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Warning)
 		msg.setWindowTitle(self.tr('warning'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
 		if detailedText: msg.setDetailedText(detailedText)
-		msg.setStandardButtons(QMessageBox.Ok)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
 		msg.exec_()
 	
 	def askWarning(self, text, detailedText = None):
 		""" Displays a warning message and asks yes or no.
 			Returns True if yes was selected.
 		"""
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Warning)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Warning)
 		msg.setWindowTitle(self.tr('warning'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
 		if detailedText: msg.setDetailedText(detailedText)
-		msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-		return msg.exec_() == QMessageBox.Yes
+		msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+		return msg.exec_() == QtWidgets.QMessageBox.Yes
 	
 	def askSaveWarning(self, text):
 		""" Displays a warning message and asks yes, no or cancel.
 			If yes was chosen, the current file will be saved.
 			Returns True if the file was successfully saved or No was chosen.
 		"""
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Warning)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Warning)
 		msg.setWindowTitle(self.tr('warning'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
-		msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel)
 		res = msg.exec_()
-		if res == QMessageBox.Yes:
+		if res == QtWidgets.QMessageBox.Yes:
 			# yes -> save or saveAs
 			# return True if progress was saved
 			if self.flag['savable']:
@@ -1040,22 +1039,22 @@ class Window(QMainWindow):
 				return True
 			else:
 				return self.saveFileAs()
-		elif res == QMessageBox.No:
+		elif res == QtWidgets.QMessageBox.No:
 			# no -> return True
 			return True
-		elif res == QMessageBox.Cancel:
+		elif res == QtWidgets.QMessageBox.Cancel:
 			# cancel -> return False
 			return False
 	
 	def showInfo(self, text, detailedText = None):
 		""" Displays a warning message. """
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Information)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Information)
 		msg.setWindowTitle(self.tr('information'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
 		if detailedText: msg.setDetailedText(detailedText)
-		msg.setStandardButtons(QMessageBox.Ok)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
 		msg.exec_()
 	
 	## PROPERTIES ##
@@ -1222,7 +1221,7 @@ class Window(QMainWindow):
 		self.resizeTable()
 		if len(self.data) != oldLength: # scroll to top if data changed
 			self.table.verticalScrollBar().setValue(0)
-		QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
+		QtCore.QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
 		self.editFilter.setText('')
 		self.table.setSortingEnabled(True)
 		self.filterData()
@@ -1240,12 +1239,12 @@ class Window(QMainWindow):
 			if visible: self.table.showRow(row)
 			else: self.table.hideRow(row)
 		
-		QTimer.singleShot(10, self.scrollToSelectedItem) # wait for scrollbar
+		QtCore.QTimer.singleShot(10, self.scrollToSelectedItem) # wait for scrollbar
 	
 	def scrollToSelectedItem(self):
 		if not self.table.selectedItems(): return
 		item = self.table.selectedItems()[0]
-		self.table.scrollToItem(item, QAbstractItemView.PositionAtCenter)
+		self.table.scrollToItem(item, QtWidgets.QAbstractItemView.PositionAtCenter)
 	
 	def tableCellChanged(self, row, column):
 		""" Called when a cell was changed.
@@ -1490,7 +1489,7 @@ class Window(QMainWindow):
 ## FTP Client ##
 ################
 
-class FTPClient(QDialog):
+class FTPClient(QtWidgets.QDialog):
 	""" The dialog for sending files using FTP. """
 	
 	def __init__(self, filename):
@@ -1498,8 +1497,8 @@ class FTPClient(QDialog):
 			           AND the filename guess for the destination file
 		"""
 		super(FTPClient, self).__init__()
-		uiFile = QFile(':/Resources/Forms/ftpclient.ui')
-		uiFile.open(QFile.ReadOnly)
+		uiFile = QtCore.QFile(':/Resources/Forms/ftpclient.ui')
+		uiFile.open(QtCore.QFile.ReadOnly)
 		loadUi(uiFile, self)
 		uiFile.close()
 		
@@ -1516,7 +1515,7 @@ class FTPClient(QDialog):
 		# connection settings
 		self.editIP.setText(Config.get('ftp.ip') or '192.168.1.1')
 		self.editIP.textChanged.connect(lambda value: Config.set('ftp.ip', value))
-		self.editPort.setValidator(QIntValidator(0, 9999))
+		self.editPort.setValidator(QtGui.QIntValidator(0, 9999))
 		self.editPort.setText(str(Config.get('ftp.port', 5000)))
 		self.editPort.textChanged.connect(lambda value: Config.set('ftp.port', int(value) if value.isdigit() else None))
 		self.editUser.setText(Config.get('ftp.user', ''))
@@ -1528,7 +1527,7 @@ class FTPClient(QDialog):
 		ftp_directory_key = {'Default': 'ftp.directory', 'Message/binJ': 'ftp.directory.message', 'Demo/e': 'ftp.directory.demo', 'Field/e': 'ftp.directory.field'}[mode]
 		ftp_directory_default_value = {'Default': '/data', 'Message/binJ': '/data/Message', 'Demo/e': '/data/Event/Demo', 'Field/e': '/data/Event/Field'}[mode]
 		filename_extension = {'Default': '.binJ', 'Message/binJ': '.binJ', 'Demo/e': '.e', 'Field/e': '.e'}[mode]
-		self.editTitleID.setValidator(QRegExpValidator(QRegExp('[0-9a-fA-F]{16}')))
+		self.editTitleID.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('[0-9a-fA-F]{16}')))
 		self.editTitleID.setText(Config.get('ftp.titleid') or '0000000000000000')
 		self.editTitleID.textChanged.connect(lambda value: Config.set('ftp.titleid', value.lower()))
 		self.editDirectory.setText(Config.get(ftp_directory_key, ftp_directory_default_value))
@@ -1545,7 +1544,7 @@ class FTPClient(QDialog):
 		self.updateFullPath()
 		
 		self.retranslateUi()
-		self.setWindowIcon(QIcon(ICON))
+		self.setWindowIcon(QtGui.QIcon(ICON))
 		self.show()
 	
 	def retranslateUi(self):
@@ -1600,7 +1599,7 @@ class FTPClient(QDialog):
 		def log(line):
 			self.editLog.setMarkdown(self.editLog.toMarkdown() + '  ' + line)
 			self.editLog.verticalScrollBar().setValue(self.editLog.verticalScrollBar().maximum())
-			QApplication.processEvents()
+			QtWidgets.QApplication.processEvents()
 		def output(s): log('» `%s`' % s)
 		
 		try:
@@ -1631,14 +1630,14 @@ class FTPClient(QDialog):
 ## Search Dlg ##
 ################
 
-class SearchDlg(QDialog):
+class SearchDlg(QtWidgets.QDialog):
 	""" The dialog for searching texts in files. """
 	
 	def __init__(self, SEP, parent):
 		super(SearchDlg, self).__init__()
 		self._parent = parent
-		uiFile = QFile(':/Resources/Forms/searchdlg.ui')
-		uiFile.open(QFile.ReadOnly)
+		uiFile = QtCore.QFile(':/Resources/Forms/searchdlg.ui')
+		uiFile.open(QtCore.QFile.ReadOnly)
 		loadUi(uiFile, self)
 		uiFile.close()
 		
@@ -1678,7 +1677,7 @@ class SearchDlg(QDialog):
 		self.table.cellDoubleClicked.connect(self.tableCellDoubleClicked)
 		
 		self.retranslateUi()
-		self.setWindowIcon(QIcon(ICON))
+		self.setWindowIcon(QtGui.QIcon(ICON))
 		self.show()
 		self.resizeTable()
 	
@@ -1755,13 +1754,13 @@ class SearchDlg(QDialog):
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
-		msg = QMessageBox()
-		msg.setIcon(QMessageBox.Critical)
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Critical)
 		msg.setWindowTitle(self.tr('error'))
-		msg.setWindowIcon(QIcon(ICON))
+		msg.setWindowIcon(QtGui.QIcon(ICON))
 		msg.setText(text)
 		if detailedText: msg.setDetailedText(detailedText)
-		msg.setStandardButtons(QMessageBox.Ok)
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
 		msg.exec_()
 	
 	def updateCBFiles(self):
@@ -1787,7 +1786,7 @@ class SearchDlg(QDialog):
 	
 	def askDirectory(self):
 		""" Ask to choose a directory and updates cbDirectory. """
-		dir = QFileDialog.getExistingDirectory(self, self.tr('chooseDirectory'), self.cbDirectory.currentText())
+		dir = QtWidgets.QFileDialog.getExistingDirectory(self, self.tr('chooseDirectory'), self.cbDirectory.currentText())
 		if not dir: return
 		self.cbDirectory.setEditText(dir)
 	
@@ -1849,11 +1848,11 @@ class SearchDlg(QDialog):
 		
 		# collect all files, idle animation
 		self.progressBar.setMaximum(0)
-		QApplication.processEvents()
+		QtWidgets.QApplication.processEvents()
 		filenames = list()
 		for dp, _, fn in os.walk(directory):
 			filenames += [path.join(dp, f) for f in fn if path.splitext(f)[1] in fileTypes]
-			QApplication.processEvents()
+			QtWidgets.QApplication.processEvents()
 		if len(filenames) == 0: # end if no files found
 			self.progressBar.setMaximum(1)
 			self.progressBar.setValue(1)
@@ -1896,7 +1895,7 @@ class SearchDlg(QDialog):
 				texts = list()
 				for line in lines:
 					texts.append(list2text(bytes2list(line, decodingTable, self.SEP)))
-					QApplication.processEvents()
+					QtWidgets.QApplication.processEvents()
 				
 				# search texts
 				for i, line in enumerate(texts):
@@ -1917,13 +1916,13 @@ class SearchDlg(QDialog):
 					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 					self.table.setItem(row, 1, item)
 					# text
-					item = QTableWidgetItem(line)
+					item = QtWidgets.QTableWidgetItem(line)
 					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 					self.table.setItem(row, 2, item)
 			
 			# update progress bar
 			self.progressBar.setValue(ctr+1)
-			QApplication.processEvents()
+			QtWidgets.QApplication.processEvents()
 		
 		# complete search
 		self.toggleSearch(False)
@@ -1934,10 +1933,10 @@ class SearchDlg(QDialog):
 ##########
 
 if __name__ == '__main__':
-	app = QApplication(list())
-	translator = QTranslator()
-	baseTranslator = QTranslator()
-	ICON = QPixmap(':/Resources/Images/icon.ico')
+	app = QtWidgets.QApplication(list())
+	translator = QtCore.QTranslator()
+	baseTranslator = QtCore.QTranslator()
+	ICON = QtGui.QPixmap(':/Resources/Images/icon.ico')
 	filename = sys.argv[1] if len(sys.argv) > 1 else None
 	window = Window(filename)
 	window.resizeTable()
