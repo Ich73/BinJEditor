@@ -182,9 +182,6 @@
      <property name="selectionMode">
       <enum>QAbstractItemView::ContiguousSelection</enum>
      </property>
-     <property name="sortingEnabled">
-      <bool>true</bool>
-     </property>
      <property name="columnCount">
       <number>3</number>
      </property>

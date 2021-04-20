@@ -196,6 +196,16 @@ class ListTableWidgetItem(DataTableWidgetItem):
 		if dataA and not dataB: return True
 		return list2text(dataA) < list2text(dataB)
 
+class PathTableWidgetItem(DataTableWidgetItem):
+	""" A QTableWidgetItem with a path value. """
+	def __init__(self, data, parent):
+		self._parent = path.normpath(parent)
+		super(PathTableWidgetItem, self).__init__(path.normpath(data))
+	def data2text(self, data):
+		return path.relpath(data, path.commonprefix((data, self._parent)))
+	def text2data(self, text):
+		return path.join(self._parent, text)
+
 class MultiLineItemDelegate(QItemDelegate):
 	""" A QItemDelegate for entering multi-line text into a table cell. """
 	def createEditor(self, parent, option, index):
@@ -965,9 +975,11 @@ class Window(QMainWindow):
 		line = self.table.item(current_row, 0).data() if current_row != -1 else 1
 		dlg.setIntValue(line)
 		if not dlg.exec_(): return
-		new_line = dlg.intValue()
+		self._goToLine(dlg.intValue())
+	
+	def _goToLine(self, line):
 		self.table.clearSelection()
-		line2row = {self.table.item(r, 0).data(): r for r in range(self.table.rowCount()) if not self.table.isRowHidden(r) and self.table.item(r, 0).data() >= new_line}
+		line2row = {self.table.item(r, 0).data(): r for r in range(self.table.rowCount()) if not self.table.isRowHidden(r) and self.table.item(r, 0).data() >= line}
 		if line2row:
 			new_row = sorted(line2row.items())[0][1]
 			self.table.setCurrentCell(new_row, 4)
@@ -1054,6 +1066,8 @@ class Window(QMainWindow):
 			Enables the actionSave option.
 			Sets the correct title of the window.
 		"""
+		# normalize path
+		if filename is not None: filename = path.normpath(filename)
 		# set changed, false if new file is loaded
 		self.flag['changed'] = self.info['filename'] is not None and filename is None
 		# store current filename and savable
@@ -1415,6 +1429,7 @@ class Window(QMainWindow):
 			return
 	
 	def tableCellDoubleClicked(self, row, column):
+		""" Called when a table cell is double clicked. """
 		if column not in [1, 2]: return
 		# copy bytes if edited data is empty
 		id = self.table.item(row, 0).data() - 1 # logical row
@@ -1465,7 +1480,7 @@ class Window(QMainWindow):
 		self.dialogs.remove(dlg)
 	
 	def showSearchDlg(self):
-		dlg = SearchDlg(self.info['SEP'])
+		dlg = SearchDlg(self.info['SEP'], self)
 		self.dialogs.append(dlg)
 		dlg.exec_()
 		self.dialogs.remove(dlg)
@@ -1619,8 +1634,9 @@ class FTPClient(QDialog):
 class SearchDlg(QDialog):
 	""" The dialog for searching texts in files. """
 	
-	def __init__(self, SEP):
+	def __init__(self, SEP, parent):
 		super(SearchDlg, self).__init__()
+		self._parent = parent
 		uiFile = QFile(':/Resources/Forms/searchdlg.ui')
 		uiFile.open(QFile.ReadOnly)
 		loadUi(uiFile, self)
@@ -1657,6 +1673,9 @@ class SearchDlg(QDialog):
 		idx = self.cbDecodingTable.findText(Config.get('search.table', ''))
 		self.cbDecodingTable.setCurrentIndex(idx if idx != -1 else 0)
 		self.cbDecodingTable.currentTextChanged.connect(lambda value: Config.set('search.table', value))
+		
+		# table
+		self.table.cellDoubleClicked.connect(self.tableCellDoubleClicked)
 		
 		self.retranslateUi()
 		self.setWindowIcon(QIcon(ICON))
@@ -1710,6 +1729,29 @@ class SearchDlg(QDialog):
 		
 		# copy to clipboard
 		clipboard.copy(s)
+	
+	def tableCellDoubleClicked(self, row, column):
+		""" Called when a table cell is double clicked. """
+		# check which line was double clicked
+		filename = self.table.item(row, 0).data()
+		line = self.table.item(row, 1).data()
+		
+		# file is current file -> go to line
+		if filename == self._parent.info['filename']:
+			self._parent._goToLine(line)
+			return
+		
+		# file is another file -> ask for saving
+		if self._parent.flag['changed'] and not self._parent.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
+		
+		# open other file and go to line
+		_, type = path.splitext(filename)
+		if type.lower() in ['.savj', '.save']: self._parent._openFile(filename)
+		elif type.lower() in ['.binj', '.e']: self._parent._importFile(filename)
+		else:
+			self.showError(self.tr('error.cannotOpenPatchFiles'))
+			return
+		self._parent._goToLine(line)
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
@@ -1867,9 +1909,7 @@ class SearchDlg(QDialog):
 					row = self.table.rowCount()
 					self.table.insertRow(row)
 					# file
-					common_prefix = path.commonprefix((filename, directory))
-					file = path.relpath(filename, common_prefix)
-					item = QTableWidgetItem(file)
+					item = PathTableWidgetItem(filename, directory)
 					item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 					self.table.setItem(row, 0, item)
 					# line
