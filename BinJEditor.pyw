@@ -24,6 +24,7 @@ from tempfile import gettempdir as tempdir
 from ftplib import FTP
 import webbrowser
 from urllib.request import urlopen
+from functools import cmp_to_key
 
 TABLE_FOLDER = 'Table'
 CONFIG_FILENAME = 'config.json'
@@ -106,15 +107,6 @@ class Config:
 ## Custom QWidgets ##
 #####################
 
-def createHex(bytes):
-	""" Example: '\xa4\x08' -> 'A4 08' """
-	return ' '.join(['%02X' % b for b in bytes])
-
-def parseHex(s):
-	""" Example: 'A4 08' -> '\xa4\x08' """
-	s = ''.join(c for c in s if c in set('0123456789ABCDEFabcdef'))
-	return bytes([int(s[i:i+2], 16) for i in range(0, len(s), 2)])
-
 class DataTableWidgetItem(QtWidgets.QTableWidgetItem):
 	""" A QTableWidgetItem with a data attribute.
 		Qt.EditRole & Qt.DisplayRole -> text
@@ -154,76 +146,275 @@ class IntTableWidgetItem(DataTableWidgetItem):
 	def dataLt(self, dataA, dataB):
 		return dataA < dataB
 
-class HexBytesTableWidgetItem(DataTableWidgetItem):
-	""" A QTableWidgetItem for bytes representing a hex value.
-		Overrides the __lt__ value comparison.
-	"""
-	def data2text(self, data):
-		return createHex(data)
-	def text2data(self, text):
-		return parseHex(text)
-	def dataLt(self, dataA, dataB):
-		if not dataA and dataB: return False
-		if dataA and not dataB: return True
-		if len(dataA) != len(dataB): return len(dataA) < len(dataB)
-		return dataA < dataB
-
-class ListTableWidgetItem(DataTableWidgetItem):
-	""" A QTableWidgetItem for a special list representing a text value.
-		Overrides the __lt__ value comparison.
-	"""
-	def __init__(self, data, addLinebreaks = True):
-		self.setAutomaticLinebreaksEnabled(addLinebreaks)
-		super(ListTableWidgetItem, self).__init__(data)
-	def setAutomaticLinebreaksEnabled(self, enabled):
-		self.addLinebreaks = enabled
-	def data2text(self, data):
-		if self.addLinebreaks:
-			t = ''
-			for char in data:
-				if isinstance(char, str): t += char # normal case
-				else: # special case
-					if t and char[0] in ['SEP', 'LF']: t += '\n' # extra linebreak before
-					t += '[%s]' % char[0]
-					if char[0] in ['SEP']: t += '\n' # extra linebreak after
-			return t
-		else: return list2text(data)
-	def text2data(self, text):
-		return text2list(text.replace('\n', ''))
-	def dataLt(self, dataA, dataB):
-		if not dataA and dataB: return False
-		if dataA and not dataB: return True
-		return list2text(dataA) < list2text(dataB)
-
 class PathTableWidgetItem(DataTableWidgetItem):
 	""" A QTableWidgetItem with a path value. """
 	def __init__(self, data, parent):
-		self._parent = path.normpath(parent)
+		self.parent = path.normpath(parent)
 		super(PathTableWidgetItem, self).__init__(path.normpath(data))
 	def data2text(self, data):
-		return path.relpath(data, path.commonprefix((data, self._parent)))
+		return path.relpath(data, path.commonprefix((data, self.parent)))
 	def text2data(self, text):
-		return path.join(self._parent, text)
+		return path.join(self.parent, text)
 
-class MultiLineItemDelegate(QtWidgets.QItemDelegate):
-	""" A QItemDelegate for entering multi-line text into a table cell. """
+
+###########
+## TABLE ##
+###########
+
+def createHex(bytes):
+	""" Example: '\xa4\x08' -> 'A4 08' """
+	return ' '.join(['%02X' % b for b in bytes])
+
+def parseHex(s):
+	""" Example: 'A4 08' -> '\xa4\x08' """
+	s = ''.join(c for c in s if c in set('0123456789ABCDEFabcdef'))
+	return bytes([int(s[i:i+2], 16) for i in range(0, len(s), 2)])
+
+class EditorTable(QtWidgets.QTableView):
+	""" A table view as the main editor. """
+	
+	KEYS_PRESSED = set()
+	
+	def __init__(self, parent):
+		super(EditorTable, self).__init__()
+		self.parent = parent
+		self.setModel(EditorTableModel(self))
+		self.setItemDelegate(EditorItemDelegate(self))
+		self.doubleClicked.connect(self.cellDoubleClicked)
+		self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
+		self.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
+		self.sortByColumn(0, Qt.AscendingOrder)
+	
+	## EVENTS ##
+	
+	def keyPressEvent(self, event):
+		""" Custom key press event. """
+		super(EditorTable, self).keyPressEvent(event)
+		self.KEYS_PRESSED.add(event.key())
+		if self.currentIndex(): self.cellKeyPressed(self.currentIndex(), self.KEYS_PRESSED)
+	
+	def keyReleaseEvent(self, event):
+		""" Custom key release event. """
+		super(EditorTable, self).keyReleaseEvent(event)
+		self.KEYS_PRESSED.discard(event.key())
+	
+	def cellDoubleClicked(self, index):
+		""" Called when a cell is double clicked to copy orig to edit. """
+		row, col = index.row(), index.column()
+		if col in [1, 2] and not self.model().hasEditData(row):
+			self.model().copy(row)
+	
+	def cellKeyPressed(self, index, keys):
+		""" Called when keys are pressed for copy, paste etc. """
+		# parse index
+		row, col = index.row(), index.column()
+		
+		# Ctrl+C -> copy
+		if {Qt.Key_Control, Qt.Key_C} == keys:
+			# get selection
+			indices = [(ind.row(), ind.column()) for ind in self.selectedIndexes()]
+			# create copy string
+			s, lr = ('', None)
+			for r, c in sorted(indices):
+				text = self.data(r, c, role = Qt.DisplayRole)
+				text = text.replace('\n', '')
+				if lr is not None: s += '\t' if r == lr else linesep # go to next row or column
+				s += text
+				lr = r
+			# copy to clipboard
+			clipboard.copy(s)
+			return
+		
+		# Ctrl+V -> paste
+		if {Qt.Key_Control, Qt.Key_V} == keys:
+			# get clipboard content
+			content = clipboard.paste().splitlines() # get clipboard content as lines
+			
+			# collect indices
+			indices = [(ind.row(), ind.column()) for ind in self.selectedIndexes()] # get selection
+			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
+			if not indices: return
+			if len(set(c for _, c in indices)) > 1: # filter if multiple columns selected
+				indices = [(r, c) for r, c in indices if c == 4] # prefer copy to text
+				content = [x.split('\t')[1] if '\t' in x else x for x in content] # use second column only
+			elif '\t' in content[0]: # filter if single column selected but content has many columns
+				index = 0 if indices[0][1] == 3 else 1
+				content = [x.split('\t')[index] for x in content] # use corresponding column only
+			
+			# paste
+			for i, (r, c) in enumerate(indices):
+				if len(content) == 1: text = content[0] # always use single line
+				elif i < len(content): text = content[i] # use next line
+				else: break # stop pasting
+				if not self.model().setData(self.model().index(r, c), text, role = Qt.EditRole): break
+				self.parent.updateFilename()
+			return
+		
+		# Ctrl+X -> cut
+		if {Qt.Key_Control, Qt.Key_X} == keys:
+			# collect indices
+			indices = [(ind.row(), ind.column()) for ind in self.selectedIndexes()] # get selection
+			columns = sorted({c for _, c in indices}) # collect columns to copy
+			rows = sorted({r for r, c in indices if c in [3, 4]}) # collect rows to cut, only editable columns
+			if not rows: return
+			
+			# create copy string and clear data
+			s = ''
+			for r in rows:
+				# copy
+				if s != '': s += linesep # go to next row
+				for j, c in enumerate(columns):
+					text = self.data(r, c, role = Qt.DisplayRole)
+					text = text.replace('\n', '')
+					if j: s += '\t' # go to next column
+					s += text
+				
+				# clear
+				self.parent.updateFilename()
+				self.model().setEditData(r, b'')
+			
+			# copy to clipboard
+			clipboard.copy(s)
+			return
+		
+		# Del -> clear
+		if Qt.Key_Delete in keys:
+			# collect rows to clear
+			indices = [(ind.row(), ind.column()) for ind in self.selectedIndexes()] # get selection
+			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
+			rows = {r for r, _ in indices} # collect rows
+			# clear rows
+			for r in sorted(rows):
+				self.parent.updateFilename()
+				self.model().setEditData(r, b'')
+			return
+		
+		# Return/Enter -> next cell
+		if Qt.Key_Return in keys or Qt.Key_Enter in keys:
+			if Qt.Key_Shift in keys: # + Shift -> next empty cell or end
+				next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r) and not self.model().hasEditData(r)), self.rowCount()-1)
+			else: next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r)), row)
+			self.setCurrentCell(next_row, col)
+			return
+	
+	## DATA ##
+	
+	def setData(self, orig_data, edit_data):
+		""" Sets the data to the given [orig_data] and [edit_data]. """
+		self.model().updateData(orig_data, edit_data)
+		self.setSortingEnabled(not not orig_data)
+	
+	def data(self, row, col, role = Qt.DisplayRole):
+		""" Returns the data at the given [row] and [col]. """
+		return self.model().data(self.model().index(row, col), role = role)
+	
+	def origData(self):
+		""" Returns the orig data in order (not as displayed). """
+		return self.model().origData()
+	
+	def editData(self):
+		""" Returns the edit data in order (not as displayed). """
+		return self.model().editData()
+	
+	def rowCount(self):
+		""" Returns the number of rows. """
+		return self.model().rowCount()
+	
+	def columnCount(self):
+		""" Returns the number of columns. """
+		return self.model().columnCount()
+	
+	def autoScaleRows(self):
+		return self.parent.actionScaleRowsToContents.isChecked()
+	
+	## ACTIONS ##
+	
+	def filterData(self):
+		""" Filters the data. Does only search orig and edit text. """
+		filter = self.parent.editFilter.text()
+		hideEmpty = self.parent.actionHideEmptyTexts.isChecked()
+		
+		# find all matching rows
+		if filter:
+			if self.autoScaleRows(): filter = filter.replace('[LF]', '\n[LF]')
+			visible_rows = set()
+			for col in [2, 4]:
+				start = self.model().index(0, col)
+				for match in self.model().match(start, Qt.DisplayRole, filter, -1, Qt.MatchContains):
+					visible_rows.add(match.row())
+		
+		# show and hide rows
+		for row in range(self.rowCount()):
+			visible = True
+			if filter and row not in visible_rows: visible = False # apply filter
+			if hideEmpty and not self.model().hasOrigData(row) and not self.model().hasEditData(row): visible = False # apply hide empty
+			if visible:
+				self.showRow(row)
+				if self.autoScaleRows(): self.resizeRowToContents(row)
+			else: self.hideRow(row)
+		
+		# scroll to selection
+		QtCore.QTimer.singleShot(10, self.goToSelection) # wait for scrollbar
+	
+	def goToLine(self, line):
+		""" Scrolls the table to the given [line]. """
+		self.clearSelection()
+		line2row = {self.data(r, 0, role = Qt.UserRole): r for r in range(self.rowCount()) if not self.isRowHidden(r) and self.data(r, 0, role = Qt.UserRole) >= line}
+		if line2row:
+			new_row = sorted(line2row.items())[0][1]
+			self.setCurrentIndex(self.model().index(new_row, 4))
+		self.goToSelection()
+	
+	def goToSelection(self):
+		""" Scrolls the table to the selection if anything is selected. """
+		index = self.currentIndex()
+		if index is None: return
+		self.scrollTo(index, QtWidgets.QAbstractItemView.PositionAtCenter)
+	
+	def resizeColumnsToContents(self):
+		""" Resizes the columns. """
+		self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents) # fit first column to contents
+		self.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch) # stretch last column to whole width
+		for column in range(self.model().columnCount()): # set widths of all columns based on the item delegate
+			sizeHint = self.itemDelegate().sizeHint(None, column)
+			self.setColumnWidth(column, sizeHint.width())
+	
+	def clearCache(self):
+		self.model().clearCache()
+
+class EditorItemDelegate(QtWidgets.QStyledItemDelegate):
+	""" An item delegate for the main editor. """
+	
+	def __init__(self, parent):
+		super(EditorItemDelegate, self).__init__()
+		self.parent = parent
+	
+	def editorEvent(self, event, model, option, index):
+		""" Called when a table cell is triggered. """
+		self.editorEvent = event.type() # store event type for setEditorData
+		return False
+	
 	def createEditor(self, parent, option, index):
+		""" Called to create an editor for editing a cell. """
 		editor = QtWidgets.QPlainTextEdit(parent)
 		editor.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) # disable both scrollbars
 		editor.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		return editor
+	
 	def setEditorData(self, editor, index):
-		self.originalText = index.data() # save text before editing
+		""" Called to put the initial text in the editor. """
 		if self.editorEvent == QEvent.KeyPress: editor.setPlainText('') # clear text if entered by key press
 		else: editor.setPlainText(index.data()) # else insert text
 		if editor.height() <= 24: editor.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap) # disable word wrap if single line text
 		editor.moveCursor(QtGui.QTextCursor.End) # move cursor to end of text
-	def editorEvent(self, event, model, option, index):
-		self.editorEvent = event.type()
-		return False
+	
 	def setModelData(self, editor, model, index):
-		model.setData(index, editor.toPlainText())
+		""" Called when commitData is called. """
+		new_data = editor.toPlainText()
+		if index.data() != new_data: model.setData(index, editor.toPlainText())
+	
 	def eventFilter(self, editor, event):
+		""" Called when a key event occurs while editing. """
 		if not editor or not event: return False
 		if event.type() in [QEvent.KeyPress]:
 			# Return/Enter -> enter linebreak OR close editor
@@ -235,13 +426,236 @@ class MultiLineItemDelegate(QtWidgets.QItemDelegate):
 					self.commitData.emit(editor)
 					self.closeEditor.emit(editor)
 					return True
-			# Escape -> restore original text, close editor
+			# Escape -> keep original text, close editor
 			elif event.key() == Qt.Key_Escape:
-				editor.setPlainText(self.originalText)
-				self.commitData.emit(editor)
 				self.closeEditor.emit(editor)
 				return True
-		return super(QtWidgets.QItemDelegate, self).eventFilter(editor, event)
+		return super(EditorItemDelegate, self).eventFilter(editor, event)
+	
+	def sizeHint(self, option, index):
+		""" Called to get the size for the given index. """
+		# parse index
+		col = index if isinstance(index, int) else index.column()
+		row = -1 if isinstance(index, int) else index.row()
+		size = QtCore.QSize(0, 0)
+		
+		# auto-height text columns
+		if row >= 0 and col in [2, 4]:
+			height = super(EditorItemDelegate, self).sizeHint(option, index).height()
+			if height > 24: height += 9 # increase height to make cell heigh enough for editing
+			size.setHeight(height)
+		
+		# auto-width middle columns
+		if col in [1, 2, 3]:
+			stretched_columns = 4
+			total_width = self.parent.viewport().size().width()
+			number_width = self.parent.horizontalHeader().sectionSize(0)
+			column_width = int((total_width - number_width) / stretched_columns)
+			size.setWidth(column_width)
+		
+		# return default size
+		return size
+
+class EditorTableModel(QtCore.QAbstractTableModel):
+	""" A table model for the main editor. """
+	
+	CACHE = dict()
+	
+	def __init__(self, parent):
+		super(EditorTableModel, self).__init__()
+		self.parent = parent
+		self.inds = list()
+		self.orig = list()
+		self.edit = list()
+	
+	## DATA ##
+	
+	def updateData(self, orig, edit):
+		""" Overrides the data with the given [edit] and [orig] data. """
+		# update data
+		self.orig = orig
+		self.edit = edit if edit is not None else [b'']*len(self.orig)
+		self.inds = list(range(len(self.orig)))
+		# signal finish
+		self.modelReset.emit()
+		return True
+	
+	def origData(self):
+		""" Returns the orig data in order (not as displayed). """
+		return [self.orig[self.inds.index(i)] for i in range(len(self.inds))]
+	
+	def editData(self):
+		""" Returns the edit data in order (not as displayed). """
+		return [self.edit[self.inds.index(i)] for i in range(len(self.inds))]
+	
+	def data2bytes(self, data):
+		return createHex(data)
+	
+	def bytes2data(self, bytes):
+		return parseHex(bytes)
+	
+	def data2text(self, data):
+		# check cache
+		if data in self.CACHE: # cache hit > use it
+			lst = self.CACHE[data]
+		else: # cache miss > convert to list and store
+			lst = bytes2list(data, self.parent.parent.info['decodingTable'], self.parent.parent.info['SEP'])
+			self.CACHE[data] = lst
+		
+		# convert to text
+		if self.parent.autoScaleRows():
+			t = ''
+			for char in lst:
+				if isinstance(char, str): t += char # normal case
+				else: # special case
+					if t and char[0] in ['SEP', 'LF']: t += '\n' # extra linebreak before
+					t += '[%s]' % char[0]
+					if char[0] in ['SEP']: t += '\n' # extra linebreak after
+			return t
+		else: return list2text(lst)
+	
+	def text2data(self, text):
+		lst = text2list(text.replace('\n', ''))
+		return list2bytes(lst, self.parent.parent.info['decodingTable'], self.parent.parent.info['SEP'])
+	
+	def setEditData(self, row, data):
+		""" Sets the edit data of the given [row] to [data]. """
+		self.edit[row] = data
+		self.dataChanged.emit(self.index(row, 3), self.index(row, 4), [Qt.EditRole])
+		if self.parent.autoScaleRows(): self.parent.resizeRowToContents(row)
+	
+	def hasOrigData(self, row):
+		""" Returns true if the orig data in the given [row] is not empty. """
+		return self.orig[row] != b''
+	
+	def hasEditData(self, row):
+		""" Returns true if the edit data in the given [row] is not empty. """
+		return self.edit[row] != b''
+	
+	def clearCache(self):
+		self.CACHE.clear()
+	
+	## TABLE MODEL ##
+	
+	def headerData(self, section, orientation = Qt.Horizontal, role = Qt.DisplayRole):
+		""" Sets the text in the header of the table. """
+		if role != Qt.DisplayRole: return QtCore.QVariant()
+		# horizontal header -> title texts
+		if orientation == Qt.Horizontal:
+			if section == 0: return self.tr('line')
+			if section == 1: return self.tr('orig.bytes')
+			if section == 2: return self.tr('orig.text')
+			if section == 3: return self.tr('edit.bytes')
+			if section == 4: return self.tr('edit.text')
+		# vertical header -> numbers
+		if orientation == Qt.Vertical:
+			return int(section+1)
+	
+	def setData(self, index, value, role = Qt.EditRole):
+		""" Sets the data at the given [index] to the given [value]. """
+		# get index
+		row, col = index.row(), index.column()
+		
+		# edit data
+		if col == 3: # bytes
+			data = self.bytes2data(value)
+		if col == 4: # text
+			try:
+				data = self.text2data(value)
+			except Exception as e:
+				self.parent.parent.showError(self.tr('error.unknownChar') % e.args[0])
+				return False
+		
+		# udpate data
+		self.edit[row] = data
+		self.dataChanged.emit(self.index(row, 3), self.index(row, 4), [role])
+		self.parent.parent.updateFilename()
+		if self.parent.autoScaleRows(): self.parent.resizeRowToContents(row)
+		return True
+	
+	def data(self, index, role = Qt.DisplayRole):
+		""" Returns the data at the given [index].
+			If Qt.DisplayRole is given texts are returned.
+			If Qt.UserRole is given int and bytes are returned.
+		"""
+		# parse index
+		row, col = index.row(), index.column()
+		
+		# DisplayRole -> str
+		if role == Qt.DisplayRole:
+			if col == 0: return str(self.inds[row]+1)
+			if col == 1: return self.data2bytes(self.orig[row])
+			if col == 2: return self.data2text(self.orig[row])
+			if col == 3: return self.data2bytes(self.edit[row])
+			if col == 4: return self.data2text(self.edit[row])
+		
+		# UserRole -> int/bytes
+		elif role == Qt.UserRole:
+			if col == 0: return self.inds[row]+1
+			if col in [1, 2]: return self.orig[row]
+			if col in [3, 4]: return self.edit[row]
+	
+	def flags(self, index):
+		""" Returns the flags for the given index. """
+		# default -> enabled and selectable
+		f = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+		# edit data -> + editable
+		if index.column() in [3, 4]: f |= Qt.ItemIsEditable
+		return f
+	
+	def sort(self, column, order):
+		""" Sorts the data in the table based on the given [column] and [order]. """
+		def comparator(x, y):
+			""" Returns 1 if x > y else -1. """
+			# parse inputs
+			(x, _), (y, _) = x, y
+			# line column -> int
+			if column == 0: return 1 if x < y else -1
+			# bytes column -> bytes
+			if column in [1, 3]:
+				if not x and y: return -1
+				if x and not y: return 1
+				if len(x) != len(y): return 1 if len(x) < len(y) else -1 # prioritize length
+				return 1 if x < y else -1
+			# text column > str
+			if column in [2, 4]:
+				if not x and y: return -1
+				if x and not y: return 1
+				return 1 if self.data2text(x) < self.data2text(y) else -1
+		
+		# sort data according to column
+		keys = [(self.data(self.index(row, column), role = Qt.UserRole), row) for row in range(self.rowCount())]
+		keys = sorted(keys, key = cmp_to_key(comparator), reverse = order == Qt.AscendingOrder)
+		
+		# shuffle data according to keys
+		self.inds = [self.inds[i] for _, i in keys]
+		self.orig = [self.orig[i] for _, i in keys]
+		self.edit = [self.edit[i] for _, i in keys]
+		
+		# update row height and visibility
+		rowHeights = [self.parent.rowHeight(i) for _, i in keys]
+		hiddenRows = {j for j, (_, i) in enumerate(keys) if self.parent.isRowHidden(i)}
+		for row, height in enumerate(rowHeights):
+			if row in hiddenRows: self.parent.hideRow(row)
+			else: self.parent.showRow(row)
+			self.parent.setRowHeight(row, height)
+		
+		# signal
+		self.modelReset.emit()
+	
+	def copy(self, row):
+		""" Copies the orig data in the given [row] to the edit data. """
+		self.edit[row] = self.orig[row]
+		self.dataChanged.emit(self.index(row, 3), self.index(row, 4), [Qt.EditRole])
+		if self.parent.autoScaleRows(): self.parent.resizeRowToContents(row)
+	
+	def rowCount(self, index = None):
+		""" Returns the number of rows. """
+		return len(self.orig)
+	
+	def columnCount(self, index = None):
+		""" Returns the number of columns. """
+		return 5
 
 
 ############
@@ -258,9 +672,6 @@ class Window(QtWidgets.QMainWindow):
 		loadUi(uiFile, self)
 		uiFile.close()
 		
-		# key listener
-		self.keysPressed = set()
-		
 		# state
 		self.info = {
 			'filename':      None, # the name of the currently loaded file
@@ -271,21 +682,26 @@ class Window(QtWidgets.QMainWindow):
 		self.flag = {
 			'changed': False, # whether the loaded data was edited
 			'savable': False, # whether the current file can be saved without save as
-			'loading': False, # while setData() is running
-			'editing': False, # while some editing is done and tableCellChanged() should not run
+			'loading': False, # while something is loading to prevent update filname
 		}
 		self.cache = {
 			'decodingTableFromSave': None, # the decoding table of the loaded save file
 		}
 		
 		# data
-		self.data = None # list of original bytes, original text, edited bytes, edited text
 		self.extra = {
-			# 'prefix': None, # the prefix bytes
+			# 'prefix': None,  # the prefix bytes
+			# 'header': None,  # for e files
+			# 'scripts': None, # for e files
+			# 'links': None,   # for e files
 		}
 		
 		# dialogs
 		self.dialogs = list()
+		
+		# table
+		self.table = EditorTable(self)
+		self.centralWidget().layout().addWidget(self.table)
 		
 		# menu > file
 		self.actionOpen.triggered.connect(self.openFile)
@@ -323,7 +739,7 @@ class Window(QtWidgets.QMainWindow):
 		# menu > view
 		self.actionHideEmptyTexts.setChecked(Config.get('hide-empty-texts', True))
 		self.actionHideEmptyTexts.triggered.connect(lambda value: Config.set('hide-empty-texts', value))
-		self.actionHideEmptyTexts.triggered.connect(self.filterData)
+		self.actionHideEmptyTexts.triggered.connect(self.table.filterData)
 		self.actionScaleRowsToContents.setChecked(Config.get('scale-rows-to-contents', True))
 		self.actionScaleRowsToContents.triggered.connect(lambda value: Config.set('scale-rows-to-contents', value))
 		self.actionScaleRowsToContents.triggered.connect(self.resizeTable)
@@ -354,16 +770,11 @@ class Window(QtWidgets.QMainWindow):
 		
 		# filter
 		self.editFilter.setFixedWidth(280)
-		self.editFilter.textChanged.connect(self.filterData)
+		self.editFilter.textChanged.connect(self.table.filterData)
 		self.buttonFilter.setFixedWidth(20)
 		self.buttonFilter.clicked.connect(self.editFilter.clear)
 		
-		# table
-		self.table.setColumnCount(5)
-		self.table.cellChanged.connect(self.tableCellChanged)
-		self.table.cellDoubleClicked.connect(self.tableCellDoubleClicked)
-		self.table.setItemDelegate(MultiLineItemDelegate())
-		
+		# ui
 		self.retranslateUi(None)
 		self.setWindowIcon(QtGui.QIcon(ICON))
 		self.show()
@@ -399,7 +810,6 @@ class Window(QtWidgets.QMainWindow):
 		self.setWindowTitle(APPNAME)
 		self.editFilter.setPlaceholderText(self.tr('Filter'))
 		self.buttonFilter.setText(self.tr('⨉'))
-		self.table.setHorizontalHeaderLabels([self.tr('line'), self.tr('orig.bytes'), self.tr('orig.text'), self.tr('edit.bytes'), self.tr('edit.text')])
 		self.menuFile.setTitle(self.tr('File'))
 		self.menuHelp.setTitle(self.tr('Help'))
 		self.menuEdit.setTitle(self.tr('Edit'))
@@ -427,24 +837,12 @@ class Window(QtWidgets.QMainWindow):
 		self.actionSearchDlg.setText(self.tr('Search in Files...'))
 		self.actionNoDecodingTable.setText(self.tr('No Table'))
 	
-	def keyPressEvent(self, event):
-		""" Custom key press event. """
-		super(Window, self).keyPressEvent(event)
-		self.keysPressed.add(event.key())
-		if self.table.currentItem():
-			self.tableCellKeyPressed(self.table.currentRow(), self.table.currentColumn(), self.keysPressed)
-	
-	def keyReleaseEvent(self, event):
-		""" Custom key release event. """
-		super(Window, self).keyReleaseEvent(event)
-		if event.key() in self.keysPressed:
-			self.keysPressed.remove(event.key())
-	
 	def resizeEvent(self, newSize):
 		""" Called when the window is resized. """
 		self.resizeTable()
 	
 	def closeEvent(self, event):
+		""" Called when the window is about to close. """
 		# ask if file was changed
 		if self.flag['changed']:
 			# ask to save and abort closing if did not save or cancel
@@ -563,11 +961,12 @@ class Window(QtWidgets.QMainWindow):
 		decodingTable = {'decode': decode, 'encode': encode, 'special': special}
 		
 		# set data
-		self.flag['editing'] = True
+		self.flag['loading'] = True
 		self.cache['decodingTableFromSave'] = decodingTable
 		self.info['SEP'] = SEP
 		self.updateDecodingTable(self.actionDecodingTableFromSav)
-		self.flag['editing'] = False
+		self.flag['loading'] = False
+		self.table.clearCache()
 		self.setData(orig_data, edit_data)
 		return True
 	
@@ -610,8 +1009,8 @@ class Window(QtWidgets.QMainWindow):
 		self.updateFilename(filename, True)
 		
 		# create data objects
-		origj = createDatJ([bytes for bytes, _, _, _ in self.data])
-		editj = createDatJ([bytes for _, _, bytes, _ in self.data])
+		origj = createDatJ(self.table.origData())
+		editj = createDatJ(self.table.editData())
 		specialj = createTabJ(self.info['decodingTable']['special'], hexValue = False)
 		decode = self.info['decodingTable']['decode']
 		encode = self.info['decodingTable']['encode']
@@ -715,9 +1114,9 @@ class Window(QtWidgets.QMainWindow):
 		self.info['filename'] = None
 		self.info['mode'] = None
 		self.info['SEP'] = None
-		self.data = None
 		self.extra = dict()
 		self.updateFilename(None)
+		self.table.clearCache()
 		self.setData(list())
 		return True
 	
@@ -759,6 +1158,7 @@ class Window(QtWidgets.QMainWindow):
 				orig_data, extra = parseE(bin, self.info['SEP'])
 				self.info['mode'] = 'e'
 			self.extra = extra
+			self.table.clearCache()
 			self.setData(orig_data)
 			return True
 		except:
@@ -766,9 +1166,9 @@ class Window(QtWidgets.QMainWindow):
 			self.info['filename'] = None
 			self.info['mode'] = None
 			self.info['SEP'] = None
-			self.data = None
 			self.extra = dict()
 			self.updateFilename(None)
+			self.table.clearCache()
 			self.setData(list())
 			return False
 	
@@ -785,7 +1185,7 @@ class Window(QtWidgets.QMainWindow):
 	def _exportFile(self, filename):
 		""" Implements exporting of .binJ and .e files. """
 		# create data
-		data = [edit if edit else orig for orig, _, edit, _ in self.data]
+		data = [edit if edit else orig for orig, edit in zip(self.table.origData(), self.table.editData())]
 		
 		# save data
 		if self.info['mode'] == 'binJ':
@@ -825,15 +1225,15 @@ class Window(QtWidgets.QMainWindow):
 			edit_data = parseDatJ(patch)
 			
 			# check if compatible
-			if len(edit_data) != len(self.data):
+			if len(edit_data) != self.table.rowCount():
 				# lengths differ -> show warning and ask to continue
 				if not self.askWarning(self.tr('warning.lengthsDiffer')): return False
 				# trim or pad edit data
-				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
-				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
+				if len(edit_data) > self.table.rowCount(): edit_data = edit_data[:self.table.rowCount()]
+				else: edit_data = edit_data + [b'']*(self.table.rowCount() - len(edit_data))
 			
 			# set data
-			orig_data = [bytes for bytes, _, _, _ in self.data]
+			orig_data = self.table.origData()
 			self.updateFilename() # show file changed
 			self.setData(orig_data, edit_data)
 		
@@ -875,12 +1275,12 @@ class Window(QtWidgets.QMainWindow):
 				return False
 			
 			# check if compatible
-			if len(edit_data) != len(self.data): # check data length
+			if len(edit_data) != self.table.rowCount(): # check data length
 				# lengths differ -> show warning and ask to continue
 				if not self.askWarning(self.tr('warning.lengthsDiffer')): return False
 				# trim or pad edit data
-				if len(edit_data) > len(self.data): edit_data = edit_data[:len(self.data)]
-				else: edit_data = edit_data + [b'']*(len(self.data) - len(edit_data))
+				if len(edit_data) > self.table.rowCount(): edit_data = edit_data[:self.table.rowCount()]
+				else: edit_data = edit_data + [b'']*(self.table.rowCount() - len(edit_data))
 			
 			# check if compatible for binj
 			if self.info['mode'] == 'binJ':
@@ -901,7 +1301,7 @@ class Window(QtWidgets.QMainWindow):
 					if not self.askWarning(self.tr('warning.LinksDiffer')): return False
 			
 			# set data
-			orig_data = [bytes for bytes, _, _, _ in self.data]
+			orig_data = self.table.origData()
 			edit_data = [edit if edit != orig else b'' for orig, edit in zip(orig_data, edit_data)] # filter equal elements
 			self.updateFilename() # show file changed
 			self.setData(orig_data, edit_data)
@@ -921,7 +1321,7 @@ class Window(QtWidgets.QMainWindow):
 	def _exportPatch(self, filename):
 		""" Implements exporting of .patJ and .patE files. """
 		# create patch
-		patch = createDatJ([bytes for _, _, bytes, _ in self.data])
+		patch = createDatJ(self.table.editData())
 		
 		# save patJ or patE
 		with open(filename, 'w', encoding = 'ASCII', newline = '\n') as file:
@@ -947,6 +1347,7 @@ class Window(QtWidgets.QMainWindow):
 		msg.exec_()
 	
 	def editSeparatorToken(self):
+		""" Shows a dialog to update the separator token. """
 		dlg = QtWidgets.QInputDialog()
 		dlg.setWindowFlags(Qt.WindowCloseButtonHint)
 		dlg.setWindowTitle(self.tr('settings'))
@@ -962,6 +1363,7 @@ class Window(QtWidgets.QMainWindow):
 		Config.set('SEP', new_sep.upper())
 	
 	def goToLine(self):
+		""" Shows a dialog to scroll to a certain line. """
 		dlg = QtWidgets.QInputDialog()
 		dlg.setInputMode(QtWidgets.QInputDialog.IntInput)
 		dlg.setIntMinimum(1)
@@ -970,19 +1372,11 @@ class Window(QtWidgets.QMainWindow):
 		dlg.setWindowTitle(self.tr('Go to Line...'))
 		dlg.setWindowIcon(QtGui.QIcon(ICON))
 		dlg.setLabelText(self.tr('dlg.goToLine'))
-		current_row = self.table.currentRow()
-		line = self.table.item(current_row, 0).data() if current_row != -1 else 1
+		current_index = self.table.currentIndex()
+		line = current_index.row()+1 if current_index is not None else 1
 		dlg.setIntValue(line)
 		if not dlg.exec_(): return
-		self._goToLine(dlg.intValue())
-	
-	def _goToLine(self, line):
-		self.table.clearSelection()
-		line2row = {self.table.item(r, 0).data(): r for r in range(self.table.rowCount()) if not self.table.isRowHidden(r) and self.table.item(r, 0).data() >= line}
-		if line2row:
-			new_row = sorted(line2row.items())[0][1]
-			self.table.setCurrentCell(new_row, 4)
-		self.scrollToSelectedItem()
+		self.table.goToLine(dlg.intValue())
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
@@ -1131,43 +1525,26 @@ class Window(QtWidgets.QMainWindow):
 		
 		# check whether data changed
 		if self.info['decodingTable'] != oldTable:
+			# clear table cache
+			self.table.clearCache()
 			# not loading -> show file changed
-			if not self.flag['loading'] and not self.flag['editing']:
-				self.updateFilename()
+			if not self.flag['loading']: self.updateFilename()
 			# file loaded -> update data
-			if self.data:
-				orig_data = [bytes for bytes, _, _, _ in self.data]
-				edit_data = [bytes for _, _, bytes, _ in self.data]
-				self.setData(orig_data, edit_data)
+			if self.table.rowCount(): self.setData(self.table.origData(), self.table.editData())
 	
 	def resizeTable(self):
 		""" Resizes the table.
 			The columns are distributed equally.
 		"""
 		# resize columns
-		number_width = 40
-		scrollbar_width = 20
-		self.table.setColumnWidth(0, number_width)
-		visible_columns = sum(1 for column in range(1, 5) if not self.table.isColumnHidden(column))
-		column_width = int((self.table.width() - self.table.verticalHeader().width() - number_width - scrollbar_width) / visible_columns)
-		for column in range(1, 5):
-			if self.table.isColumnHidden(column): continue
-			self.table.setColumnWidth(column, column_width)
-		
-		# update automatic linebreaks
-		scaleRows = self.actionScaleRowsToContents.isChecked()
-		for r in range(self.table.rowCount()):
-			for c in [2, 4]:
-				self.table.item(r, c).setAutomaticLinebreaksEnabled(scaleRows)
+		self.table.resizeColumnsToContents()
 		
 		# resize rows
-		if scaleRows:
-			self.table.resizeRowsToContents()
-		else:
-			self.table.verticalHeader().setDefaultSectionSize(self.table.verticalHeader().defaultSectionSize())
+		if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowsToContents()
+		else: self.table.verticalHeader().setDefaultSectionSize(self.table.verticalHeader().minimumSectionSize())
 		
 		# scroll to selection
-		self.scrollToSelectedItem()
+		self.table.goToSelection()
 	
 	## DATA ##
 	
@@ -1176,289 +1553,25 @@ class Window(QtWidgets.QMainWindow):
 			Updates the data.
 			Resizes the table by calling self.resizeTable().
 		"""
-		# clear table and data, start loading
-		self.flag['loading'] = True
-		self.table.setSortingEnabled(False)
+		# prepare loading
 		self.editFilter.clear()
-		self.table.setRowCount(0)
-		oldLength = len(self.data) if self.data else 0
-		self.data = list()
-		scaleRows = self.actionScaleRowsToContents.isChecked()
+		oldLength = self.table.rowCount()
 		
-		# add to data and table
-		for i, orig_key in enumerate(orig_data):
-			orig_value = bytes2list(orig_key, self.info['decodingTable'], self.info['SEP'])
-			# get edit data
-			if edit_data and edit_data[i]:
-				edit_key = edit_data[i]
-				edit_value = bytes2list(edit_key, self.info['decodingTable'], self.info['SEP'])
-			else: edit_key, edit_value = (b'', list())
-			# add to data
-			self.data.append((orig_key, orig_value, edit_key, edit_value))
-			# add row
-			row = self.table.rowCount()
-			self.table.insertRow(row)
-			# line
-			item = IntTableWidgetItem(i+1)
-			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-			self.table.setItem(row, 0, item)
-			# original bytes
-			item = HexBytesTableWidgetItem(orig_key)
-			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-			self.table.setItem(row, 1, item)
-			# original text
-			item = ListTableWidgetItem(orig_value, scaleRows)
-			item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-			self.table.setItem(row, 2, item)
-			# edit bytes
-			item = HexBytesTableWidgetItem(edit_key)
-			self.table.setItem(row, 3, item)
-			# edit text
-			item = ListTableWidgetItem(edit_value, scaleRows)
-			self.table.setItem(row, 4, item)
+		# add new data
+		self.table.setData(orig_data, edit_data)
 		
-		# resize table, finish loading
+		# finish loading
 		self.resizeTable()
-		if len(self.data) != oldLength: # scroll to top if data changed
-			self.table.verticalScrollBar().setValue(0)
+		if self.table.rowCount() != oldLength: self.table.verticalScrollBar().setValue(0) # scroll to top if data changed
 		QtCore.QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
-		self.editFilter.setText('')
-		self.table.setSortingEnabled(True)
-		self.filterData()
-		self.flag['loading'] = False
-	
-	def filterData(self):
-		""" Filters the data. Does not search the index. """
-		filter = self.editFilter.text()
-		hideEmpty = self.actionHideEmptyTexts.isChecked()
-		
-		for row in range(self.table.rowCount()):
-			visible = True
-			if hideEmpty and not self.table.item(row, 1).text() and not self.table.item(row, 3).text(): visible = False
-			if filter and not any(filter.lower() in self.table.item(row, column).text().replace('\n', '').lower() for column in range(1, 5)): visible = False
-			if visible: self.table.showRow(row)
-			else: self.table.hideRow(row)
-		
-		QtCore.QTimer.singleShot(10, self.scrollToSelectedItem) # wait for scrollbar
-	
-	def scrollToSelectedItem(self):
-		if not self.table.selectedItems(): return
-		item = self.table.selectedItems()[0]
-		self.table.scrollToItem(item, QtWidgets.QAbstractItemView.PositionAtCenter)
-	
-	def tableCellChanged(self, row, column):
-		""" Called when a cell was changed.
-			Updates the data.
-		"""
-		if self.flag['loading'] or self.flag['editing']: return
-		
-		# get cells
-		bytes_cell = self.table.item(row, 3)
-		list_cell  = self.table.item(row, 4)
-		id = self.table.item(row, 0).data() - 1 # logical row
-		
-		# edit bytes
-		if column == 3:
-			bytes = bytes_cell.data()
-			lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # convert to list
-		
-		# edit text
-		if column == 4:
-			lst = list_cell.data()
-			# convert to bytes
-			try:
-				bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
-				lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
-			except Exception as e:
-				self.showError(self.tr('error.unknownChar') % e.args[0])
-				self.flag['editing'] = True
-				list_cell.setData(data=self.data[id][3])
-				self.flag['editing'] = False
-				return
-		
-		# change data and cells
-		self.flag['editing'] = True
-		self.updateFilename()
-		bytes_cell.setData(data=bytes)
-		list_cell.setData(data=lst)
-		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-		if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(row)
-		self.flag['editing'] = False
-	
-	def tableCellKeyPressed(self, row, column, keys):
-		""" Called when a key is pressed while focussing a table cell. """
-		# Ctrl+C -> copy
-		if {Qt.Key_Control, Qt.Key_C} == keys:
-			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
-			
-			# create copy string
-			s, lr = ('', None)
-			for r, c in sorted(indices):
-				text = self.table.item(r, c).text()
-				text = text.replace('\n', '')
-				if lr is not None: s += '\t' if r == lr else linesep # go to next row or column
-				s += text
-				lr = r
-			
-			# copy to clipboard
-			clipboard.copy(s)
-			return
-		
-		# Ctrl+V -> paste
-		if {Qt.Key_Control, Qt.Key_V} == keys:
-			# get clipboard content
-			content = clipboard.paste() # get clipboard content
-			content = content.splitlines() # split content into lines
-			
-			# collect indices for pasting
-			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
-			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
-			if not indices: return
-			if len(set(c for _, c in indices)) > 1: # filter if multiple columns selected
-				indices = [(r, c) for r, c in indices if c == 4] # prefer copy to text
-				content = [x.split('\t')[1] if '\t' in x else x for x in content] # use second column only
-			elif '\t' in content[0]: # filter if single column selected but content has many columns
-				index = 0 if indices[0][1] == 3 else 1
-				content = [x.split('\t')[index] for x in content] # use corresponding column only
-			
-			# paste
-			self.table.setSortingEnabled(False)
-			for i, (r, c) in enumerate(indices):
-				if len(content) == 1: text = content[0] # always use single line
-				elif i < len(content): text = content[i] # use next line
-				else: break # stop pasting
-				
-				bytes_cell = self.table.item(r, 3)
-				list_cell  = self.table.item(r, 4)
-				id = self.table.item(r, 0).data() - 1 # logical row
-				
-				# paste to bytes
-				if c == 3:
-					bytes = parseHex(text)
-					lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # convert to list
-				
-				# paste to text
-				elif c == 4:
-					lst = text2list(text)
-					# convert to bytes
-					try:
-						bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
-						lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
-					except Exception as e:
-						self.showError(self.tr('error.unknownChar') % e.args[0])
-						self.keysPressed.clear() # prevent keys from keeping pressed
-						self.flag['editing'] = True
-						list_cell.setData(data=self.data[id][3])
-						self.flag['editing'] = False
-						break # break loop
-				
-				# change data and cells
-				self.flag['editing'] = True
-				self.updateFilename()
-				bytes_cell.setData(data=bytes)
-				list_cell.setData(data=lst)
-				self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
-				self.flag['editing'] = False
-			self.table.setSortingEnabled(True)
-			return
-		
-		# Ctrl+X -> cut
-		if {Qt.Key_Control, Qt.Key_X} == keys:
-			# collect indices for pasting
-			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
-			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
-			columns = sorted({c for _, c in indices}) # collect columns
-			rows = sorted({r for r, _ in indices}) # collect rows
-			if not rows: return
-			
-			# create copy string and clear data
-			s = ''
-			self.table.setSortingEnabled(False)
-			for r in rows:
-				# copy
-				if s != '': s += linesep # go to next row
-				for j, c in enumerate(columns):
-					text = self.table.item(r, c).text()
-					text = text.replace('\n', '')
-					if j: s += '\t' # go to next column
-					s += text
-				
-				# clear
-				id = self.table.item(r, 0).data() - 1 # logical row
-				self.flag['editing'] = True
-				self.updateFilename()
-				self.table.item(r, 3).setData(data=b'')
-				self.table.item(r, 4).setData(data=list())
-				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
-				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
-				self.flag['editing'] = False
-			self.table.setSortingEnabled(True)
-			
-			# copy to clipboard
-			clipboard.copy(s)
-			return
-		
-		# Del -> clear
-		if Qt.Key_Delete in keys:
-			# collect indices for pasting
-			indices = [(ind.row(), ind.column()) for ind in self.table.selectedIndexes()] # get selection
-			indices = [(r, c) for r, c in indices if c in [3, 4]] # filter selection for editable columns
-			rows = {r for r, _ in indices} # collect rows
-			
-			self.table.setSortingEnabled(False)
-			for r in sorted(rows):
-				id = self.table.item(r, 0).data() - 1 # logical row
-				self.flag['editing'] = True
-				self.updateFilename()
-				self.table.item(r, 3).setData(data=b'')
-				self.table.item(r, 4).setData(data=list())
-				self.data[id] = (self.data[id][0], self.data[id][1], b'', list())
-				if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(r)
-				self.flag['editing'] = False
-			self.table.setSortingEnabled(True)
-			return
-		
-		# Return/Enter -> next cell
-		if Qt.Key_Return in keys or Qt.Key_Enter in keys:
-			if Qt.Key_Shift in keys: # + Shift -> next empty cell
-				next_row = next((r for r in range(row + 1, self.table.rowCount()) if not self.table.isRowHidden(r) and not self.table.item(r, 4).text()), row)
-			else: next_row = next((r for r in range(row + 1, self.table.rowCount()) if not self.table.isRowHidden(r)), row)
-			self.table.setCurrentCell(next_row, column)
-			return
-	
-	def tableCellDoubleClicked(self, row, column):
-		""" Called when a table cell is double clicked. """
-		if column not in [1, 2]: return
-		# copy bytes if edited data is empty
-		id = self.table.item(row, 0).data() - 1 # logical row
-		if self.data[id][2]: return
-		if column == 1:
-			bytes = self.data[id][0]
-			lst = self.data[id][1]
-		elif column == 2:
-			lst = self.data[id][1]
-			# convert to bytes
-			try:
-				bytes = list2bytes(lst, self.info['decodingTable'], self.info['SEP'])
-				lst = bytes2list(bytes, self.info['decodingTable'], self.info['SEP']) # de-escape chars
-			except Exception as e:
-				self.showError(self.tr('error.unknownChar') % e.args[0])
-				self.keysPressed.clear() # prevent keys from keeping pressed
-				return # abort
-		self.flag['editing'] = True
-		self.updateFilename()
-		self.table.item(row, 3).setData(data=bytes)
-		self.table.item(row, 4).setData(data=lst)
-		self.data[id] = (self.data[id][0], self.data[id][1], bytes, lst)
-		if self.actionScaleRowsToContents.isChecked(): self.table.resizeRowToContents(row)
-		self.flag['editing'] = False
+		self.table.filterData() # filter data
 	
 	## MISC ##
 	
 	def showFTPClient(self):
+		""" Creates and shows the FTP Client. """
 		# create temporary binj or e file
-		data = [edit if edit else orig for orig, _, edit, _ in self.data]
+		data = [edit if edit else orig for orig, edit in zip(self.table.origData(), self.table.editData())]
 		if self.info['mode'] == 'binJ':
 			bin = createBinJ(data, self.info['SEP'], self.extra)
 			filename = path.join(tempdir(), path.splitext(path.basename(self.info['filename']))[0] + '.binJ')
@@ -1479,6 +1592,7 @@ class Window(QtWidgets.QMainWindow):
 		self.dialogs.remove(dlg)
 	
 	def showSearchDlg(self):
+		""" Creates and shows a Search Dialog. """
 		dlg = SearchDlg(self.info['SEP'], self)
 		self.dialogs.append(dlg)
 		dlg.exec_()
@@ -1635,7 +1749,7 @@ class SearchDlg(QtWidgets.QDialog):
 	
 	def __init__(self, SEP, parent):
 		super(SearchDlg, self).__init__()
-		self._parent = parent
+		self.parent = parent
 		uiFile = QtCore.QFile(':/Resources/Forms/searchdlg.ui')
 		uiFile.open(QtCore.QFile.ReadOnly)
 		loadUi(uiFile, self)
@@ -1736,21 +1850,21 @@ class SearchDlg(QtWidgets.QDialog):
 		line = self.table.item(row, 1).data()
 		
 		# file is current file -> go to line
-		if filename == self._parent.info['filename']:
-			self._parent._goToLine(line)
+		if filename == self.parent.info['filename']:
+			self.parent.table.goToLine(line)
 			return
 		
 		# file is another file -> ask for saving
-		if self._parent.flag['changed'] and not self._parent.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
+		if self.parent.flag['changed'] and not self.parent.askSaveWarning(self.tr('warning.saveBeforeOpening')): return False
 		
 		# open other file and go to line
 		_, type = path.splitext(filename)
-		if type.lower() in ['.savj', '.save']: self._parent._openFile(filename)
-		elif type.lower() in ['.binj', '.e']: self._parent._importFile(filename)
+		if type.lower() in ['.savj', '.save']: self.parent._openFile(filename)
+		elif type.lower() in ['.binj', '.e']: self.parent._importFile(filename)
 		else:
 			self.showError(self.tr('error.cannotOpenPatchFiles'))
 			return
-		self._parent._goToLine(line)
+		self.parent.table.goToLine(line)
 	
 	def showError(self, text, detailedText = None):
 		""" Displays an error message. """
