@@ -130,6 +130,8 @@
     </property>
     <addaction name="actionHideEmptyTexts"/>
     <addaction name="actionScaleRowsToContents"/>
+    <addaction name="actionAlternatingRowColors"/>
+    <addaction name="actionExpertMode"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -224,6 +226,9 @@
    <property name="text">
     <string>Create Patch...</string>
    </property>
+   <property name="shortcut">
+    <string notr="true">Ctrl+Shift+C</string>
+   </property>
   </action>
   <action name="actionApplyPatch">
    <property name="enabled">
@@ -231,6 +236,9 @@
    </property>
    <property name="text">
     <string>Apply Patch...</string>
+   </property>
+   <property name="shortcut">
+    <string notr="true">Ctrl+Shift+A</string>
    </property>
   </action>
   <action name="actionHideEmptyTexts">
@@ -347,6 +355,28 @@
    </property>
    <property name="shortcut">
     <string notr="true">Ctrl+W</string>
+   </property>
+  </action>
+  <action name="actionAlternatingRowColors">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Alternating Row Colors</string>
+   </property>
+  </action>
+  <action name="actionExpertMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Expert Mode</string>
    </property>
   </action>
  </widget>

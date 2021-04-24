@@ -178,12 +178,24 @@ class EditorTable(QtWidgets.QTableView):
 	def __init__(self, parent):
 		super(EditorTable, self).__init__()
 		self.parent = parent
+		# set model and delegate
 		self.setModel(EditorTableModel(self))
 		self.setItemDelegate(EditorItemDelegate(self))
+		# connect signals
 		self.doubleClicked.connect(self.cellDoubleClicked)
+		# set behaviour
 		self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
 		self.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
 		self.sortByColumn(0, Qt.AscendingOrder)
+		# change color palette
+		palette = QtGui.QPalette()
+		alternateBaseColor = QtGui.QColor(243, 243, 243) # alternating row colors
+		palette.setColor(QtGui.QPalette.Active,   QtGui.QPalette.AlternateBase, alternateBaseColor)
+		palette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.AlternateBase, alternateBaseColor)
+		inactiveHighlightColor = palette.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight) # inactive highlight
+		inactiveHighlightColor.setAlpha(30)
+		palette.setColor(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight, inactiveHighlightColor)
+		self.setPalette(palette)
 	
 	## EVENTS ##
 	
@@ -294,7 +306,7 @@ class EditorTable(QtWidgets.QTableView):
 			if Qt.Key_Shift in keys: # + Shift -> next empty cell or end
 				next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r) and not self.model().hasEditData(r)), self.rowCount()-1)
 			else: next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r)), row)
-			self.setCurrentCell(next_row, col)
+			self.setCurrentIndex(self.model().index(next_row, col))
 			return
 	
 	## DATA ##
@@ -334,24 +346,21 @@ class EditorTable(QtWidgets.QTableView):
 		filter = self.parent.editFilter.text()
 		hideEmpty = self.parent.actionHideEmptyTexts.isChecked()
 		
-		# find all matching rows
-		if filter:
-			if self.autoScaleRows(): filter = filter.replace('[LF]', '\n[LF]')
-			visible_rows = set()
-			for col in [2, 4]:
-				start = self.model().index(0, col)
-				for match in self.model().match(start, Qt.DisplayRole, filter, -1, Qt.MatchContains):
-					visible_rows.add(match.row())
+		# prepare filter
+		pattern = re.compile(re.escape(filter).replace('\\*', '.*'), re.IGNORECASE)
 		
 		# show and hide rows
 		for row in range(self.rowCount()):
 			visible = True
-			if filter and row not in visible_rows: visible = False # apply filter
+			if not any(pattern.search(self.model().data(self.model().index(row, col), role = Qt.DisplayRole).replace('\n', '')) for col in [2, 4]): visible = False # apply filter
 			if hideEmpty and not self.model().hasOrigData(row) and not self.model().hasEditData(row): visible = False # apply hide empty
 			if visible:
-				self.showRow(row)
-				if self.autoScaleRows(): self.resizeRowToContents(row)
-			else: self.hideRow(row)
+				if self.isRowHidden(row):
+					self.showRow(row)
+					if self.autoScaleRows(): self.resizeRowToContents(row)
+			else:
+				if not self.isRowHidden(row):
+					self.hideRow(row)
 		
 		# scroll to selection
 		QtCore.QTimer.singleShot(10, self.goToSelection) # wait for scrollbar
@@ -378,6 +387,15 @@ class EditorTable(QtWidgets.QTableView):
 		for column in range(self.model().columnCount()): # set widths of all columns based on the item delegate
 			sizeHint = self.itemDelegate().sizeHint(None, column)
 			self.setColumnWidth(column, sizeHint.width())
+	
+	def setExpertModeEnabled(self, enabled):
+		""" Enables or disables expert mode. """
+		# show or hide columns
+		self.setColumnHidden(1, not enabled)
+		self.setColumnHidden(3, not enabled)
+		# resize columns and rows
+		self.resizeColumnsToContents()
+		if self.autoScaleRows(): self.resizeRowsToContents()
 	
 	def clearCache(self):
 		self.model().clearCache()
@@ -447,7 +465,7 @@ class EditorItemDelegate(QtWidgets.QStyledItemDelegate):
 		
 		# auto-width middle columns
 		if col in [1, 2, 3]:
-			stretched_columns = 4
+			stretched_columns = sum(1 for c in range(1, self.parent.columnCount()) if not self.parent.isColumnHidden(c))
 			total_width = self.parent.viewport().size().width()
 			number_width = self.parent.horizontalHeader().sectionSize(0)
 			column_width = int((total_width - number_width) / stretched_columns)
@@ -743,6 +761,14 @@ class Window(QtWidgets.QMainWindow):
 		self.actionScaleRowsToContents.setChecked(Config.get('scale-rows-to-contents', True))
 		self.actionScaleRowsToContents.triggered.connect(lambda value: Config.set('scale-rows-to-contents', value))
 		self.actionScaleRowsToContents.triggered.connect(self.resizeTable)
+		self.actionAlternatingRowColors.setChecked(Config.get('alternating-row-colors', True))
+		self.table.setAlternatingRowColors(Config.get('alternating-row-colors', True))
+		self.actionAlternatingRowColors.triggered.connect(lambda value: Config.set('alternating-row-colors', value))
+		self.actionAlternatingRowColors.triggered.connect(self.table.setAlternatingRowColors)
+		self.actionExpertMode.setChecked(Config.get('expert-mode', False))
+		self.table.setExpertModeEnabled(Config.get('expert-mode', False))
+		self.actionExpertMode.triggered.connect(lambda value: Config.set('expert-mode', value))
+		self.actionExpertMode.triggered.connect(self.table.setExpertModeEnabled)
 		
 		# menu > tools
 		self.actionFTPClient.triggered.connect(self.showFTPClient)
@@ -777,6 +803,8 @@ class Window(QtWidgets.QMainWindow):
 		# ui
 		self.retranslateUi(None)
 		self.setWindowIcon(QtGui.QIcon(ICON))
+		if Config.get('expert-mode', False): self.resize(1080, 600)
+		else: self.resize(880, 512)
 		self.show()
 		self.resizeTable()
 		self.checkUpdates()
@@ -831,6 +859,8 @@ class Window(QtWidgets.QMainWindow):
 		self.actionCheckForUpdates.setText(self.tr('Check for Updates...'))
 		self.actionHideEmptyTexts.setText(self.tr('Hide Empty Texts'))
 		self.actionScaleRowsToContents.setText(self.tr('Scale Rows to Contents'))
+		self.actionAlternatingRowColors.setText(self.tr('Alternating Row Colors'))
+		self.actionExpertMode.setText(self.tr('Expert Mode'))
 		self.actionDecodingTableFromSav.setText(self.tr('Table from Save'))
 		self.actionSeparatorToken.setText(self.tr('Separator Token...'))
 		self.actionFTPClient.setText(self.tr('Send via FTP...'))
@@ -1556,13 +1586,15 @@ class Window(QtWidgets.QMainWindow):
 		# prepare loading
 		self.editFilter.clear()
 		oldLength = self.table.rowCount()
+		oldLine = self.table.currentIndex().row()+1 if self.table.currentIndex() is not None else 1
 		
 		# add new data
 		self.table.setData(orig_data, edit_data)
 		
 		# finish loading
 		self.resizeTable()
-		if self.table.rowCount() != oldLength: self.table.verticalScrollBar().setValue(0) # scroll to top if data changed
+		if self.table.rowCount() == oldLength: # if data is similar
+			self.table.goToLine(oldLine) # scroll to old selection
 		QtCore.QTimer.singleShot(20, self.resizeTable) # wait for scrollbar
 		self.table.filterData() # filter data
 	
@@ -1756,7 +1788,7 @@ class SearchDlg(QtWidgets.QDialog):
 		uiFile.close()
 		
 		self.setWindowFlags(Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
-		self.SEP = SEP
+		self.SEP = SEP or b'\xe3\x1b'
 		
 		# key listener
 		self.keysPressed = set()
@@ -1775,6 +1807,9 @@ class SearchDlg(QtWidgets.QDialog):
 		for item in Config.get('search.directory.history', list()): self.cbDirectory.addItem(item)
 		self.cbDirectory.setEditText(Config.get('search.directory', ''))
 		self.cbDirectory.editTextChanged.connect(lambda value: Config.set('search.directory', value))
+		for item in Config.get('search.filter.history', list()): self.cbFilter.addItem(item)
+		self.cbFilter.setEditText(Config.get('search.filter', '*'))
+		self.cbFilter.editTextChanged.connect(lambda value: Config.set('search.filter', value))
 		self.buttonChooseDirectory.clicked.connect(self.askDirectory)
 		self.buttonChooseDirectory.setFixedWidth(22)
 		# files
@@ -1795,6 +1830,20 @@ class SearchDlg(QtWidgets.QDialog):
 		self.show()
 		self.resizeTable()
 	
+	def retranslateUi(self):
+		self.setWindowTitle(self.tr('Search in Files...'))
+		self.labelSettings.setText(self.tr('Search Settings'))
+		self.labelSearchFor.setText(self.tr('Search for:'))
+		self.useRegex.setText(self.tr('Regex'))
+		self.labelDirectory.setText(self.tr('Directory:'))
+		self.labelFilter.setText(self.tr('Filter:'))
+		self.labelFiles.setText(self.tr('Files:'))
+		self.labelDecodingTable.setText(self.tr('Table:'))
+		self.buttonSearch.setText(self.tr('Search'))
+		self.table.setHorizontalHeaderLabels([self.tr('file'), self.tr('line'), self.tr('text')])
+		self.table.setSortingEnabled(True)
+		self.updateCBFiles()
+	
 	def keyPressEvent(self, event):
 		""" Custom key press event. """
 		super(SearchDlg, self).keyPressEvent(event)
@@ -1807,19 +1856,6 @@ class SearchDlg(QtWidgets.QDialog):
 		super(SearchDlg, self).keyReleaseEvent(event)
 		if event.key() in self.keysPressed:
 			self.keysPressed.remove(event.key())
-	
-	def retranslateUi(self):
-		self.setWindowTitle(self.tr('Search in Files...'))
-		self.labelSettings.setText(self.tr('Search Settings'))
-		self.labelSearchFor.setText(self.tr('Search for:'))
-		self.useRegex.setText(self.tr('Regex'))
-		self.labelDirectory.setText(self.tr('Directory:'))
-		self.labelFiles.setText(self.tr('Files:'))
-		self.labelDecodingTable.setText(self.tr('Table:'))
-		self.buttonSearch.setText(self.tr('Search'))
-		self.table.setHorizontalHeaderLabels([self.tr('file'), self.tr('line'), self.tr('text')])
-		self.table.setSortingEnabled(True)
-		self.updateCBFiles()
 	
 	def resizeTable(self):
 		self.table.setColumnWidth(0, 180)
@@ -1918,6 +1954,7 @@ class SearchDlg(QtWidgets.QDialog):
 		self.cbSearchFor.setEnabled(not self.searching)
 		self.useRegex.setEnabled(not self.searching)
 		self.cbDirectory.setEnabled(not self.searching)
+		self.cbFilter.setEnabled(not self.searching)
 		self.buttonChooseDirectory.setEnabled(not self.searching)
 		self.cbFiles.setEnabled(not self.searching)
 		self.cbDecodingTable.setEnabled(not self.searching)
@@ -1930,6 +1967,7 @@ class SearchDlg(QtWidgets.QDialog):
 		searchString = self.cbSearchFor.currentText()
 		useRegex = self.useRegex.isChecked()
 		directory = self.cbDirectory.currentText()
+		fileNameFilter = self.cbFilter.currentText() or '*'
 		fileTypes = self.cbFiles.currentData()
 		decodingTable = self.cbDecodingTable.currentData()
 		
@@ -1941,11 +1979,16 @@ class SearchDlg(QtWidgets.QDialog):
 			return
 		if useRegex:
 			try:
-				pattern = re.compile(searchString)
+				searchStringPattern = re.compile(searchString)
 			except Exception as e:
 				self.showError(self.tr('error.invalidRegex'), str(e))
 				self.toggleSearch(False)
 				return
+		else:
+			searchStringPattern = re.compile(re.escape(searchString).replace('\\*', '.*'), re.IGNORECASE)
+		if fileNameFilter not in ['', '*']:
+			fileNamePattern = re.compile('^%s$' % re.escape(fileNameFilter).replace('\\*', '.*'), re.IGNORECASE)
+		else: fileNamePattern = None
 		decodingTable = parseDecodingTable(decodingTable)
 		
 		# update search history
@@ -1959,14 +2002,18 @@ class SearchDlg(QtWidgets.QDialog):
 			Config.set(configKey, history)
 		updateHistory(self.cbSearchFor, 'search.for.history')
 		updateHistory(self.cbDirectory, 'search.directory.history')
+		updateHistory(self.cbFilter, 'search.filter.history')
 		
 		# collect all files, idle animation
 		self.progressBar.setMaximum(0)
 		QtWidgets.QApplication.processEvents()
 		filenames = list()
 		for dp, _, fn in os.walk(directory):
-			filenames += [path.join(dp, f) for f in fn if path.splitext(f)[1] in fileTypes]
-			QtWidgets.QApplication.processEvents()
+			for f in fn:
+				if path.splitext(f)[1] not in fileTypes: continue
+				if fileNamePattern and not fileNamePattern.search(path.splitext(path.basename(f))[0]) and not fileNamePattern.search(path.basename(f)): continue
+				filenames.append(path.join(dp, f))
+				QtWidgets.QApplication.processEvents()
 		if len(filenames) == 0: # end if no files found
 			self.progressBar.setMaximum(1)
 			self.progressBar.setValue(1)
@@ -2013,10 +2060,7 @@ class SearchDlg(QtWidgets.QDialog):
 				
 				# search texts
 				for i, line in enumerate(texts):
-					if useRegex:
-						if not pattern.search(line): continue
-					else:
-						if searchString.lower() not in line.lower(): continue
+					if not searchStringPattern.search(line): continue
 					
 					# add row
 					row = self.table.rowCount()
