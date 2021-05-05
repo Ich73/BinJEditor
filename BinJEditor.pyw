@@ -215,6 +215,7 @@ class EditorTable(QtWidgets.QTableView):
 		row, col = index.row(), index.column()
 		if col in [1, 2] and not self.model().hasEditData(row):
 			self.model().copy(row)
+			self.parent.updateFilename()
 	
 	def cellKeyPressed(self, index, keys):
 		""" Called when keys are pressed for copy, paste etc. """
@@ -304,7 +305,8 @@ class EditorTable(QtWidgets.QTableView):
 		# Return/Enter -> next cell
 		if Qt.Key_Return in keys or Qt.Key_Enter in keys:
 			if Qt.Key_Shift in keys: # + Shift -> next empty cell or end
-				next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r) and not self.model().hasEditData(r)), self.rowCount()-1)
+				next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r) and not self.model().hasEditData(r)), -1)
+				if next_row == -1: next_row = next((r for r in range(self.rowCount()-1, row-1, -1) if not self.isRowHidden(r)), row)
 			else: next_row = next((r for r in range(row + 1, self.rowCount()) if not self.isRowHidden(r)), row)
 			self.setCurrentIndex(self.model().index(next_row, col))
 			return
